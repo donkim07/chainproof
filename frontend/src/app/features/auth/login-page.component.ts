@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
@@ -40,11 +40,11 @@ export class LoginPageComponent {
   email = '';
   password = '';
   loading = false;
-  constructor(private auth: AuthService, private toast: ToastService) {}
+  constructor(private auth: AuthService, private toast: ToastService, private router: Router) {}
   login() {
     this.loading = true;
     this.auth.login(this.email, this.password).subscribe({
-      next: () => { window.location.href = '/dashboard'; },
+      next: () => { this.router.navigateByUrl(this.auth.postLoginPath()); },
       error: e => { this.toast.error(e.error?.error || 'Login failed'); this.loading = false; },
     });
   }

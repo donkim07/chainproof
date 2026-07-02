@@ -1,5 +1,5 @@
-import { Component } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Component, OnInit } from '@angular/core';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
 
@@ -17,7 +17,13 @@ import { AuthService } from '../../core/services/auth.service';
           <span class="font-semibold text-white">ChainProof</span>
         </div>
         <nav class="space-y-1 p-4">
-          @for (item of navItems; track item.path) {
+          @if (auth.isSuperAdmin() && !auth.hasOrganization()) {
+            <a routerLink="/dashboard/platform" routerLinkActive="bg-brand-600/15 text-brand-400"
+               class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 transition-colors hover:bg-slate-800 hover:text-white">
+              <span>&#9733;</span> Platform Admin
+            </a>
+          }
+          @for (item of visibleNav; track item.path) {
             <a [routerLink]="item.path" routerLinkActive="bg-brand-600/15 text-brand-400"
                class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 transition-colors hover:bg-slate-800 hover:text-white">
               <span [innerHTML]="item.icon"></span>
@@ -47,16 +53,33 @@ import { AuthService } from '../../core/services/auth.service';
     </div>
   `,
 })
-export class DashboardLayoutComponent {
+export class DashboardLayoutComponent implements OnInit {
   sidebarOpen = false;
   navItems = [
-    { path: '/dashboard', label: 'Overview', icon: '&#9632;' },
-    { path: '/dashboard/sites', label: 'Sites', icon: '&#127760;' },
-    { path: '/dashboard/incidents', label: 'Tampering', icon: '&#9888;' },
-    { path: '/dashboard/records', label: 'Records', icon: '&#128274;' },
-    { path: '/dashboard/api-keys', label: 'API Keys', icon: '&#128273;' },
-    { path: '/dashboard/team', label: 'Team', icon: '&#128101;' },
-    { path: '/dashboard/settings', label: 'Settings', icon: '&#9881;' },
+    { path: '/dashboard', label: 'Overview', icon: '&#9632;', needsOrg: true },
+    { path: '/dashboard/sites', label: 'Sites', icon: '&#127760;', needsOrg: true },
+    { path: '/dashboard/incidents', label: 'Tampering', icon: '&#9888;', needsOrg: true },
+    { path: '/dashboard/records', label: 'Records', icon: '&#128274;', needsOrg: true },
+    { path: '/dashboard/api-keys', label: 'API Keys', icon: '&#128273;', needsOrg: true },
+    { path: '/dashboard/team', label: 'Team', icon: '&#128101;', needsOrg: true },
+    { path: '/dashboard/settings', label: 'Settings', icon: '&#9881;', needsOrg: true },
+    { path: '/dashboard/platform', label: 'Platform', icon: '&#9733;', needsOrg: false, superAdminOnly: true },
   ];
-  constructor(public auth: AuthService) {}
+
+  get visibleNav() {
+    return this.navItems.filter(item => {
+      if (item.superAdminOnly && !this.auth.isSuperAdmin()) return false;
+      if (item.needsOrg && !this.auth.hasOrganization()) return false;
+      return true;
+    });
+  }
+
+  constructor(public auth: AuthService, private router: Router) {}
+
+  ngOnInit() {
+    const onTenantRoute = this.navItems.some(i => i.needsOrg && this.router.url.startsWith(i.path) && i.path !== '/dashboard/platform');
+    if (onTenantRoute && !this.auth.hasOrganization()) {
+      this.router.navigate(['/dashboard/platform']);
+    }
+  }
 }

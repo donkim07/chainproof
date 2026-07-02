@@ -9,6 +9,7 @@ import { DashboardHomeComponent } from './features/dashboard/dashboard-home.comp
 import { SitesPageComponent } from './features/dashboard/sites-page.component';
 import { IncidentsPageComponent } from './features/dashboard/incidents-page.component';
 import { ApiKeysPageComponent } from './features/dashboard/api-keys-page.component';
+import { PlatformPageComponent } from './features/dashboard/platform-page.component';
 
 export const routes: Routes = [
   { path: '', component: LandingPageComponent },
@@ -25,6 +26,7 @@ export const routes: Routes = [
       { path: 'incidents', component: IncidentsPageComponent },
       { path: 'records', component: IncidentsPageComponent },
       { path: 'api-keys', component: ApiKeysPageComponent },
+      { path: 'platform', component: PlatformPageComponent },
       { path: 'team', component: DashboardHomeComponent },
       { path: 'settings', component: DashboardHomeComponent },
     ],

@@ -29,7 +29,10 @@ export class AuthService {
     if (token) {
       this.isLoggedIn.set(true);
       this.api.get<AuthUser>('/api/v1/auth/me').subscribe({
-        next: u => this.user.set(u),
+        next: u => {
+          this.user.set(u);
+          if (u.org_slug) localStorage.setItem('cp_org_slug', u.org_slug);
+        },
         error: () => this.logout(),
       });
     }
@@ -49,8 +52,29 @@ export class AuthService {
 
   private setSession(res: AuthResponse) {
     localStorage.setItem('cp_token', res.token);
+    if (res.organization?.slug) {
+      localStorage.setItem('cp_org_slug', res.organization.slug);
+    } else {
+      localStorage.removeItem('cp_org_slug');
+    }
     this.user.set(res.user);
     this.isLoggedIn.set(true);
+    if (res.user.org_slug) {
+      localStorage.setItem('cp_org_slug', res.user.org_slug);
+    }
+  }
+
+  hasOrganization(): boolean {
+    const u = this.user();
+    return !!(u?.org_slug || localStorage.getItem('cp_org_slug'));
+  }
+
+  isSuperAdmin(): boolean {
+    return this.user()?.role === 'super_admin';
+  }
+
+  postLoginPath(): string {
+    return this.hasOrganization() ? '/dashboard' : '/dashboard/platform';
   }
 
   logout() {

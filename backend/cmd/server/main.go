@@ -61,9 +61,9 @@ func main() {
 	platformSvc := services.NewPlatformService(platformDB)
 
 	authHandler := handlers.NewAuthHandler(authSvc)
-	integrityHandler := handlers.NewIntegrityHandler(integritySvc)
-	siteHandler := handlers.NewSiteHandler(siteSvc)
-	apiKeyHandler := handlers.NewAPIKeyHandler(apiKeySvc)
+	integrityHandler := handlers.NewIntegrityHandler(integritySvc, platformDB)
+	siteHandler := handlers.NewSiteHandler(siteSvc, platformDB)
+	apiKeyHandler := handlers.NewAPIKeyHandler(apiKeySvc, platformDB)
 	platformHandler := handlers.NewPlatformHandler(platformSvc)
 
 	if cfg.Env == "production" {
@@ -112,6 +112,7 @@ func main() {
 			admin := protected.Group("/platform")
 			admin.Use(middleware.RequireRole("super_admin"))
 			{
+				admin.GET("/overview", platformHandler.Overview)
 				admin.GET("/organizations", platformHandler.ListOrganizations)
 			}
 		}

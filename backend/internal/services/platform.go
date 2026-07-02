@@ -62,3 +62,19 @@ func (s *PlatformService) ListOrganizations(ctx context.Context) ([]models.Organ
 	}
 	return orgs, nil
 }
+
+func (s *PlatformService) Overview(ctx context.Context) (map[string]interface{}, error) {
+	var orgCount int
+	_ = s.db.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM organizations WHERE active = true`).Scan(&orgCount)
+
+	var userCount int
+	_ = s.db.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM platform_users WHERE active = true`).Scan(&userCount)
+
+	orgs, _ := s.ListOrganizations(ctx)
+
+	return map[string]interface{}{
+		"total_organizations": orgCount,
+		"total_users":         userCount,
+		"organizations":       orgs,
+	}, nil
+}
