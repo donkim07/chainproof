@@ -1,0 +1,167 @@
+networks:
+  chainproof_net:
+    name: chainproof_net
+
+volumes:
+  chainproof_postgres_data:
+  ca_chainproof_data:
+  couchdb_chainproof_data:
+  orderer0_data:
+  peer0_chainproof_data:
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: chainproof-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: chainproof_platform
+    ports:
+      - "5434:5432"
+    volumes:
+      - chainproof_postgres_data:/var/lib/postgresql/data
+      - ./backend/migrations/platform:/docker-entrypoint-initdb.d/01-platform:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [chainproof_net]
+
+  # --- Hyperledger Fabric (simplified single-org for BAAS) ---
+  ca.chainproof.local:
+    image: hyperledger/fabric-ca:1.5.11
+    container_name: ca.chainproof.local
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-chainproof
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_PORT=7054
+    ports:
+      - "7154:7054"
+    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    volumes:
+      - ca_chainproof_data:/etc/hyperledger/fabric-ca-server
+    networks: [chainproof_net]
+
+  couchdb.chainproof.local:
+    image: couchdb:3.4
+    container_name: couchdb.chainproof.local
+    environment:
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=adminpw
+    ports:
+      - "6984:5984"
+    volumes:
+      - couchdb_chainproof_data:/opt/couchdb/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:5984/_up || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks: [chainproof_net]
+
+  orderer0.chainproof.local:
+    image: hyperledger/fabric-orderer:2.5.11
+    container_name: orderer0.chainproof.local
+    environment:
+      - FABRIC_LOGGING_SPEC=INFO
+      - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+      - ORDERER_GENERAL_LISTENPORT=7050
+      - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
+      - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp
+      - ORDERER_GENERAL_TLS_ENABLED=true
+      - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+      - ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+      - ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      - ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+      - ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+      - ORDERER_GENERAL_CLUSTER_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      - ORDERER_GENERAL_BOOTSTRAPMETHOD=none
+      - ORDERER_CHANNELPARTICIPATION_ENABLED=true
+      - ORDERER_ADMIN_TLS_ENABLED=true
+      - ORDERER_ADMIN_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+      - ORDERER_ADMIN_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+      - ORDERER_ADMIN_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      - ORDERER_ADMIN_TLS_CLIENTROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      - ORDERER_ADMIN_LISTENADDRESS=0.0.0.0:7053
+      - ORDERER_OPERATIONS_LISTENADDRESS=orderer0.chainproof.local:9443
+    ports:
+      - "7150:7050"
+      - "7153:7053"
+    volumes:
+      - ./blockchain/fabric/crypto/orderer:/var/hyperledger/orderer
+      - orderer0_data:/var/hyperledger/production/orderer
+    networks: [chainproof_net]
+    profiles: [fabric]
+
+  peer0.chainproof.local:
+    image: hyperledger/fabric-peer:2.5.11
+    container_name: peer0.chainproof.local
+    environment:
+      - FABRIC_LOGGING_SPEC=INFO
+      - CORE_PEER_ID=peer0.chainproof.local
+      - CORE_PEER_ADDRESS=peer0.chainproof.local:7051
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:7051
+      - CORE_PEER_CHAINCODEADDRESS=peer0.chainproof.local:7052
+      - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:7052
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.chainproof.local:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.chainproof.local:7051
+      - CORE_PEER_LOCALMSPID=ChainProofMSP
+      - CORE_PEER_MSPCONFIGPATH=/var/hyperledger/peer/msp
+      - CORE_OPERATIONS_LISTENADDRESS=peer0.chainproof.local:9444
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_TLS_CERT_FILE=/var/hyperledger/peer/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/var/hyperledger/peer/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/var/hyperledger/peer/tls/ca.crt
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb.chainproof.local:5984
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
+      - CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG={"peername":"peer0.chainproof.local"}
+      - CORE_CHAINCODE_EXECUTETIMEOUT=300s
+    ports:
+      - "7151:7051"
+      - "7152:7052"
+    volumes:
+      - ./blockchain/fabric/crypto/peer:/var/hyperledger/peer
+      - peer0_chainproof_data:/var/hyperledger/production
+    depends_on:
+      couchdb.chainproof.local:
+        condition: service_healthy
+    networks: [chainproof_net]
+    profiles: [fabric]
+
+  ccaas.chainproof-integrity:
+    image: chainproof-chaincode:latest
+    container_name: ccaas.chainproof-integrity
+    environment:
+      - CHAINCODE_SERVER_ADDRESS=0.0.0.0:9999
+      - CHAINCODE_ID=chainproof-integrity_1.0
+      - CORE_CHAINCODE_ID_NAME=chainproof-integrity_1.0
+    ports:
+      - "9999:9999"
+    networks: [chainproof_net]
+    profiles: [fabric]
+
+  fabric-gateway:
+    build: ./blockchain/fabric/gateway-adapter
+    container_name: chainproof-fabric-gateway
+    environment:
+      - PORT=8090
+      - API_KEY=chainproof-dev-key
+      - FABRIC_PEER_ENDPOINT=peer0.chainproof.local:7051
+      - FABRIC_PEER_HOST_ALIAS=peer0.chainproof.local
+      - FABRIC_TLS_CERT_PATH=/crypto/peer/tls/ca.crt
+      - FABRIC_ID_CERT_PATH=/crypto/user/chainproof-admin/chainproof-admin/msp/signcerts/cert.pem
+      - FABRIC_ID_KEY_PATH=/crypto/user/chainproof-admin/chainproof-admin/msp/keystore/key.pem
+      - FABRIC_MSP_ID=ChainProofMSP
+      - FABRIC_CHANNEL=chainproof-channel
+      - FABRIC_CHAINCODE=chainproof-integrity
+    ports:
+      - "8090:8090"
+    volumes:
+      - ./blockchain/fabric/crypto:/crypto:ro
+    networks: [chainproof_net]
+    profiles: [fabric]

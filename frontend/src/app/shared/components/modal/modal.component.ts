@@ -1,0 +1,26 @@
+import { Component, Input } from '@angular/core';
+import { CommonModule } from '@angular/common';
+
+@Component({
+  selector: 'app-modal',
+  standalone: true,
+  imports: [CommonModule],
+  template: `
+    @if (open) {
+      <div class="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" (click)="close.emit()"></div>
+        <div class="relative w-full max-w-lg rounded-xl border border-slate-700 bg-slate-900 p-6 shadow-2xl animate-slide-up">
+          @if (title) {
+            <h3 class="mb-4 text-lg font-semibold text-white">{{ title }}</h3>
+          }
+          <ng-content />
+        </div>
+      </div>
+    }
+  `,
+})
+export class ModalComponent {
+  @Input() open = false;
+  @Input() title = '';
+  close = { emit: () => {} } as { emit: () => void };
+}

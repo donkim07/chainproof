@@ -1,0 +1,10 @@
+{
+  "name": "chainproof-fabric-gateway",
+  "version": "1.0.0",
+  "main": "server.js",
+  "dependencies": {
+    "@grpc/grpc-js": "^1.12.5",
+    "@hyperledger/fabric-gateway": "^1.7.0",
+    "express": "^4.21.2"
+  }
+}
