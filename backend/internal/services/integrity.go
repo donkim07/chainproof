@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -65,30 +66,40 @@ func (s *IntegrityService) Anchor(ctx context.Context, orgSlug, actorID string, 
 	status := "submitted"
 	var txID *string
 	var anchoredAt *time.Time
+	meta := map[string]interface{}{}
 	if anchorErr != nil {
 		status = "failed"
-	} else if anchorResult != nil && anchorResult.TxID != "" {
-		txID = &anchorResult.TxID
+		meta["blockchain_error"] = anchorErr.Error()
+	} else if anchorResult != nil {
+		if anchorResult.TxID != "" {
+			txID = &anchorResult.TxID
+		}
 		now := time.Now()
 		anchoredAt = &now
+		if anchorResult.Mock {
+			meta["blockchain_mode"] = "dev_mock"
+			meta["note"] = "Fabric gateway offline — hash stored locally with dev mock tx id. Start fabric profile for real anchoring."
+		}
 	}
 
 	rec.BlockchainStatus = status
 	rec.BlockchainTxID = txID
 	rec.AnchoredAt = anchoredAt
 
+	metaJSON, _ := json.Marshal(meta)
 	_, err = pool.Exec(ctx, `
 		INSERT INTO integrity_records
 		(id, site_id, entity_type, entity_id, table_name, payload_hash, record_hash,
-		 previous_record_hash, blockchain_tx_id, blockchain_status, anchored_at)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+		 previous_record_hash, blockchain_tx_id, blockchain_status, anchored_at, metadata)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
 		ON CONFLICT (entity_type, entity_id, record_hash) DO UPDATE SET
 			blockchain_tx_id = EXCLUDED.blockchain_tx_id,
 			blockchain_status = EXCLUDED.blockchain_status,
-			anchored_at = EXCLUDED.anchored_at`,
+			anchored_at = EXCLUDED.anchored_at,
+			metadata = EXCLUDED.metadata`,
 		rec.ID, rec.SiteID, rec.EntityType, rec.EntityID, rec.TableName,
 		rec.PayloadHash, rec.RecordHash, rec.PreviousRecordHash,
-		rec.BlockchainTxID, rec.BlockchainStatus, rec.AnchoredAt)
+		rec.BlockchainTxID, rec.BlockchainStatus, rec.AnchoredAt, metaJSON)
 	if err != nil {
 		return nil, err
 	}
@@ -222,6 +233,54 @@ func (s *IntegrityService) RunMonitor(ctx context.Context, orgSlug string) (int,
 		}
 	}
 	return tampered, nil
+}
+
+func (s *IntegrityService) RetryFailedAnchors(ctx context.Context, orgSlug string) (int, error) {
+	pool, _, err := s.tenant.GetPool(ctx, orgSlug)
+	if err != nil {
+		return 0, err
+	}
+	rows, err := pool.Query(ctx, `
+		SELECT id, entity_type, entity_id, payload_hash, record_hash, COALESCE(previous_record_hash,'')
+		FROM integrity_records WHERE blockchain_status = 'failed'
+		ORDER BY created_at DESC LIMIT 20`)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+
+	retried := 0
+	for rows.Next() {
+		var id uuid.UUID
+		var entityType, entityID, payloadHash, recordHash, prev string
+		if err := rows.Scan(&id, &entityType, &entityID, &payloadHash, &recordHash, &prev); err != nil {
+			continue
+		}
+		result, err := s.fabric.Anchor(ctx, blockchain.AnchorPayload{
+			EntityType: entityType, EntityUID: entityID, Action: "ANCHOR",
+			PayloadHash: payloadHash, RecordHash: recordHash,
+			PreviousRecordHash: prev, TenantID: orgSlug,
+		})
+		if err != nil {
+			continue
+		}
+		meta := map[string]interface{}{"retried_at": time.Now().Format(time.RFC3339)}
+		if result != nil && result.Mock {
+			meta["blockchain_mode"] = "dev_mock"
+		}
+		metaJSON, _ := json.Marshal(meta)
+		var txID *string
+		now := time.Now()
+		if result != nil && result.TxID != "" {
+			txID = &result.TxID
+		}
+		_, _ = pool.Exec(ctx, `
+			UPDATE integrity_records SET blockchain_status = 'submitted', blockchain_tx_id = $1,
+			anchored_at = $2, metadata = metadata || $3::jsonb WHERE id = $4`,
+			txID, now, metaJSON, id)
+		retried++
+	}
+	return retried, nil
 }
 
 func (s *IntegrityService) ListRecords(ctx context.Context, orgSlug string, limit int) ([]models.IntegrityRecord, error) {

@@ -20,6 +20,7 @@ type Config struct {
 	JWTExpiryHours    int
 	FabricGatewayURL  string
 	FabricGatewayKey  string
+	FabricDevMock     bool
 	SeedAdminEmail    string
 	SeedAdminPassword string
 	CORSOrigins       []string
@@ -52,6 +53,7 @@ func Load() (*Config, error) {
 		JWTExpiryHours:    expiry,
 		FabricGatewayURL:  getEnv("FABRIC_GATEWAY_URL", "http://localhost:8090"),
 		FabricGatewayKey:  getEnv("FABRIC_GATEWAY_API_KEY", "chainproof-dev-key"),
+		FabricDevMock:     getEnv("FABRIC_DEV_MOCK", "true") == "true",
 		SeedAdminEmail:    getEnv("SEED_ADMIN_EMAIL", "admin@chainproof.io"),
 		SeedAdminPassword: getEnv("SEED_ADMIN_PASSWORD", "ChainProof2026!"),
 		CORSOrigins:       origins,

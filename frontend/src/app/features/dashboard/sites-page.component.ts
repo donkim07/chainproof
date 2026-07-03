@@ -7,6 +7,7 @@ import { ToastService } from '../../core/services/toast.service';
 import { ButtonComponent } from '../../shared/components/button/button.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { StatCardComponent } from '../../shared/components/stat-card/stat-card.component';
+import { CopyButtonComponent } from '../../shared/components/copy-button/copy-button.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 
 interface Site {
@@ -47,12 +48,16 @@ interface SiteAuth {
   poll_enabled: boolean;
   poll_interval_minutes: number;
   sample_bodies?: Record<string, string>;
+  login_url?: string;
+  login_email?: string;
+  login_password?: string;
+  auto_refresh_enabled?: boolean;
 }
 
 @Component({
   selector: 'app-sites-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, ButtonComponent, PageHeaderComponent, StatCardComponent, EmptyStateComponent],
+  imports: [CommonModule, FormsModule, ButtonComponent, PageHeaderComponent, StatCardComponent, EmptyStateComponent, CopyButtonComponent],
   template: `
     <app-page-header
       title="Sites & Endpoints"
@@ -186,6 +191,15 @@ interface SiteAuth {
                 <div><label class="text-xs text-slate-400">Header name</label><input class="input-field mt-1" [(ngModel)]="authForm.api_key_header" placeholder="X-API-Key" /></div>
                 <div><label class="text-xs text-slate-400">API key value</label><input class="input-field mt-1 font-mono" [(ngModel)]="authForm.api_key_value" /></div>
               }
+              <div class="md:col-span-2 border-t border-slate-800 pt-3 mt-1">
+                <div class="text-xs font-medium text-amber-300 mb-2">JWT expiring? Auto-refresh (optional)</div>
+                <p class="text-xs text-slate-500 mb-3">If your API uses short-lived JWTs, add your login endpoint — ChainProof re-authenticates on 401. Better: use a long-lived API key for polling.</p>
+                <div class="grid gap-3 md:grid-cols-3">
+                  <input class="input-field text-xs" [(ngModel)]="authForm.login_url" placeholder="Login URL e.g. https://api.../auth/login" />
+                  <input class="input-field text-xs" [(ngModel)]="authForm.login_email" placeholder="Service account email" />
+                  <input class="input-field text-xs" type="password" [(ngModel)]="authForm.login_password" placeholder="Password" />
+                </div>
+              </div>
               <div class="md:col-span-2 flex flex-wrap items-center gap-4">
                 <label class="inline-flex items-center gap-2 text-sm text-slate-300">
                   <input type="checkbox" [(ngModel)]="authForm.poll_enabled" /> Enable polling (auto-anchor every {{ authForm.poll_interval_minutes || 5 }} min)
@@ -193,9 +207,12 @@ interface SiteAuth {
                 <app-button (click)="saveAuth()">Save Auth</app-button>
               </div>
             </div>
-            <div class="mt-4 rounded-lg bg-slate-950/80 border border-slate-800 p-3 text-xs">
-              <div class="text-slate-500 mb-1">Proxy URL (route traffic here to capture &amp; anchor):</div>
-              <code class="text-emerald-400 break-all">{{ proxyUrl }}</code>
+            <div class="mt-4 rounded-lg bg-slate-950/80 border border-slate-800 p-3 text-xs flex items-start justify-between gap-2">
+              <div>
+                <div class="text-slate-500 mb-1">Proxy URL (requires ChainProof JWT — see Docs):</div>
+                <code class="text-emerald-400 break-all">{{ proxyUrl }}</code>
+              </div>
+              <app-copy-button [value]="proxyUrl" label="Copy proxy URL" />
             </div>
             <div class="mt-3 grid gap-2 md:grid-cols-2">
               <div>
@@ -351,7 +368,7 @@ export class SitesPageComponent implements OnInit {
     this.api.get<Endpoint[]>(`/api/v1/sites/${site.id}/endpoints`).subscribe(e => (this.endpoints = e));
     this.api.get<SiteAuth>(`/api/v1/sites/${site.id}/auth`).subscribe(a => {
       this.auth = a;
-      this.authForm = { ...this.authForm, auth_type: a.auth_type || 'none', poll_enabled: a.poll_enabled, poll_interval_minutes: a.poll_interval_minutes || 5, api_key_header: a.api_key_header || 'X-API-Key' };
+      this.authForm = { ...this.authForm, auth_type: a.auth_type || 'none', poll_enabled: a.poll_enabled, poll_interval_minutes: a.poll_interval_minutes || 5, api_key_header: a.api_key_header || 'X-API-Key', login_url: a.login_url || '', login_email: a.login_email || '' };
       if (a.sample_bodies?.['/api/ask']) this.sampleBodyAsk = a.sample_bodies['/api/ask'];
     });
   }
@@ -442,6 +459,9 @@ export class SitesPageComponent implements OnInit {
     if (this.authForm.bearer_token) payload['bearer_token'] = this.authForm.bearer_token;
     if (this.authForm.api_key_header) payload['api_key_header'] = this.authForm.api_key_header;
     if (this.authForm.api_key_value) payload['api_key_value'] = this.authForm.api_key_value;
+    if (this.authForm.login_url) payload['login_url'] = this.authForm.login_url;
+    if (this.authForm.login_email) payload['login_email'] = this.authForm.login_email;
+    if (this.authForm.login_password) payload['login_password'] = this.authForm.login_password;
     this.api.put(`/api/v1/sites/${this.selectedSite.id}/auth`, payload).subscribe({
       next: () => { this.toast.success('Auth saved'); this.selectSite(this.selectedSite!); },
       error: e => this.toast.error(e.error?.error || 'Failed'),

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 
@@ -22,6 +23,9 @@ type SiteAuthSettings struct {
 	SampleBodies        map[string]string `json:"sample_bodies,omitempty"`
 	PollEnabled         bool              `json:"poll_enabled"`
 	PollIntervalMinutes int               `json:"poll_interval_minutes"`
+	LoginURL            string            `json:"login_url,omitempty"`
+	LoginEmail          string            `json:"login_email,omitempty"`
+	LoginPassword       string            `json:"login_password,omitempty"`
 }
 
 type SiteAuthPublic struct {
@@ -37,6 +41,10 @@ type SiteAuthPublic struct {
 	SampleBodies        map[string]string `json:"sample_bodies,omitempty"`
 	PollEnabled         bool              `json:"poll_enabled"`
 	PollIntervalMinutes int               `json:"poll_interval_minutes"`
+	LoginURL            string            `json:"login_url,omitempty"`
+	LoginEmail          string            `json:"login_email,omitempty"`
+	LoginPasswordSet    bool              `json:"login_password_set"`
+	AutoRefreshEnabled  bool              `json:"auto_refresh_enabled"`
 }
 
 func (s *SiteService) loadSiteSettings(ctx context.Context, orgSlug string, siteID uuid.UUID) (map[string]interface{}, string, error) {
@@ -119,6 +127,19 @@ func (s *SiteService) UpdateAuthSettings(ctx context.Context, orgSlug string, si
 	settings["auth_type"] = current.AuthType
 	settings["poll_enabled"] = current.PollEnabled
 	settings["poll_interval_minutes"] = current.PollIntervalMinutes
+	if req.LoginURL != "" {
+		current.LoginURL = req.LoginURL
+		settings["auth_login_url"] = req.LoginURL
+	}
+	if req.LoginEmail != "" {
+		current.LoginEmail = req.LoginEmail
+		settings["auth_login_email"] = req.LoginEmail
+	}
+	if req.LoginPassword != "" && !strings.HasPrefix(req.LoginPassword, "****") {
+		enc, _ := crypto.Encrypt(secret, req.LoginPassword)
+		settings["auth_login_password"] = enc
+		current.LoginPassword = req.LoginPassword
+	}
 
 	b, _ := json.Marshal(settings)
 	_, err = pool.Exec(ctx, `UPDATE sites SET settings = $1, updated_at = NOW() WHERE id = $2`, b, siteID)
@@ -153,6 +174,13 @@ func parseAuthFromSettings(settings map[string]interface{}, secret string) SiteA
 			auth.BasicPass = v
 		}
 	}
+	auth.LoginURL = strVal(settings["auth_login_url"], "")
+	auth.LoginEmail = strVal(settings["auth_login_email"], "")
+	if enc := strVal(settings["auth_login_password"], ""); enc != "" {
+		if v, err := crypto.Decrypt(secret, enc); err == nil {
+			auth.LoginPassword = v
+		}
+	}
 	return auth
 }
 
@@ -170,6 +198,10 @@ func toPublicAuth(a SiteAuthSettings) *SiteAuthPublic {
 		SampleBodies:        a.SampleBodies,
 		PollEnabled:         a.PollEnabled,
 		PollIntervalMinutes: a.PollIntervalMinutes,
+		LoginURL:            a.LoginURL,
+		LoginEmail:          a.LoginEmail,
+		LoginPasswordSet:    a.LoginPassword != "",
+		AutoRefreshEnabled:  a.LoginURL != "" && a.LoginEmail != "" && a.LoginPassword != "",
 	}
 }
 
@@ -255,7 +287,7 @@ func (s *SiteService) TestEndpoint(ctx context.Context, orgSlug, secret string, 
 		return nil, err
 	}
 	auth := parseAuthFromSettings(settings, secret)
-	status, respBody, err := s.callEndpoint(ctx, baseURL, auth, method, path, body)
+	status, respBody, err := s.invokeEndpoint(ctx, orgSlug, secret, siteID, baseURL, settings, auth, method, path, body)
 	if err != nil {
 		return &EndpointTestResult{Message: err.Error()}, nil
 	}
@@ -281,4 +313,62 @@ func truncate(s string, n int) string {
 		return s
 	}
 	return s[:n] + "..."
+}
+
+func (s *SiteService) invokeEndpoint(ctx context.Context, orgSlug, secret string, siteID uuid.UUID, baseURL string, settings map[string]interface{}, auth SiteAuthSettings, method, path, body string) (int, string, error) {
+	status, respBody, err := s.callEndpoint(ctx, baseURL, auth, method, path, body)
+	if status != http.StatusUnauthorized && status != http.StatusForbidden {
+		return status, respBody, err
+	}
+	if auth.LoginURL == "" || auth.LoginEmail == "" || auth.LoginPassword == "" {
+		return status, respBody, err
+	}
+	token, err := s.refreshBearerToken(ctx, auth)
+	if err != nil {
+		return status, respBody, err
+	}
+	auth.AuthType = "bearer"
+	auth.BearerToken = token
+	enc, _ := crypto.Encrypt(secret, token)
+	settings["auth_bearer"] = enc
+	settings["auth_type"] = "bearer"
+	b, _ := json.Marshal(settings)
+	pool, _, _ := s.tenant.GetPool(ctx, orgSlug)
+	_, _ = pool.Exec(ctx, `UPDATE sites SET settings = $1, updated_at = NOW() WHERE id = $2`, b, siteID)
+	return s.callEndpoint(ctx, baseURL, auth, method, path, body)
+}
+
+func (s *SiteService) refreshBearerToken(ctx context.Context, auth SiteAuthSettings) (string, error) {
+	payload, _ := json.Marshal(map[string]string{"email": auth.LoginEmail, "password": auth.LoginPassword})
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, auth.LoginURL, strings.NewReader(string(payload)))
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 8192))
+	if resp.StatusCode >= 400 {
+		return "", fmt.Errorf("login refresh failed: %d", resp.StatusCode)
+	}
+	var parsed map[string]interface{}
+	if json.Unmarshal(body, &parsed) != nil {
+		return "", fmt.Errorf("invalid login response")
+	}
+	for _, key := range []string{"token", "access_token", "accessToken", "jwt"} {
+		if v, ok := parsed[key]; ok {
+			return fmt.Sprintf("%v", v), nil
+		}
+	}
+	if data, ok := parsed["data"].(map[string]interface{}); ok {
+		for _, key := range []string{"token", "access_token", "accessToken"} {
+			if v, ok := data[key]; ok {
+				return fmt.Sprintf("%v", v), nil
+			}
+		}
+	}
+	return "", fmt.Errorf("no token field in login response")
 }

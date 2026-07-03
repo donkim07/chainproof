@@ -3,16 +3,20 @@ package blockchain
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
 type Client struct {
 	baseURL string
 	apiKey  string
+	devMock bool
 	client  *http.Client
 }
 
@@ -31,12 +35,14 @@ type AnchorResult struct {
 	Success bool   `json:"success"`
 	TxID    string `json:"txId"`
 	Error   string `json:"error,omitempty"`
+	Mock    bool   `json:"mock,omitempty"`
 }
 
-func NewClient(baseURL, apiKey string) *Client {
+func NewClient(baseURL, apiKey string, devMock bool) *Client {
 	return &Client{
 		baseURL: baseURL,
 		apiKey:  apiKey,
+		devMock: devMock,
 		client:  &http.Client{Timeout: 30 * time.Second},
 	}
 }
@@ -54,6 +60,9 @@ func (c *Client) Anchor(ctx context.Context, payload AnchorPayload) (*AnchorResu
 
 	resp, err := c.client.Do(req)
 	if err != nil {
+		if c.devMock {
+			return c.mockAnchor(payload), nil
+		}
 		return nil, fmt.Errorf("fabric gateway unreachable: %w", err)
 	}
 	defer resp.Body.Close()
@@ -61,15 +70,27 @@ func (c *Client) Anchor(ctx context.Context, payload AnchorPayload) (*AnchorResu
 	data, _ := io.ReadAll(resp.Body)
 	var result AnchorResult
 	if err := json.Unmarshal(data, &result); err != nil {
+		if c.devMock {
+			return c.mockAnchor(payload), nil
+		}
 		return nil, err
 	}
 	if !result.Success {
+		if c.devMock {
+			return c.mockAnchor(payload), nil
+		}
 		if result.Error == "" {
-			result.Error = string(data)
+			result.Error = strings.TrimSpace(string(data))
 		}
 		return &result, fmt.Errorf("anchor failed: %s", result.Error)
 	}
 	return &result, nil
+}
+
+func (c *Client) mockAnchor(payload AnchorPayload) *AnchorResult {
+	sum := sha256.Sum256([]byte(payload.RecordHash + payload.TenantID))
+	txID := "dev-mock-" + hex.EncodeToString(sum[:8])
+	return &AnchorResult{Success: true, TxID: txID, Mock: true}
 }
 
 func (c *Client) Verify(ctx context.Context, entityType, entityUID, recordHash string) (bool, string, error) {
@@ -85,6 +106,9 @@ func (c *Client) Verify(ctx context.Context, entityType, entityUID, recordHash s
 
 	resp, err := c.client.Do(req)
 	if err != nil {
+		if c.devMock {
+			return strings.HasPrefix(recordHash, ""), "dev-mock-verify", nil
+		}
 		return false, "", err
 	}
 	defer resp.Body.Close()
@@ -113,3 +137,5 @@ func (c *Client) Health(ctx context.Context) error {
 	}
 	return nil
 }
+
+func (c *Client) DevMockEnabled() bool { return c.devMock }

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { ToastService } from '../../core/services/toast.service';
+import { CopyButtonComponent } from '../../shared/components/copy-button/copy-button.component';
 import { ButtonComponent } from '../../shared/components/button/button.component';
 
 interface APIKey {
@@ -18,7 +19,7 @@ interface APIKey {
 @Component({
   selector: 'app-api-keys-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, ButtonComponent],
+  imports: [CommonModule, FormsModule, ButtonComponent, CopyButtonComponent],
   template: `
     <div class="space-y-6">
       <div class="flex items-center justify-between">
@@ -31,7 +32,10 @@ interface APIKey {
 
       @if (newKey) {
         <div class="card border-emerald-500/30 animate-slide-up">
-          <div class="badge-success mb-2">Key Created — copy now, it won't be shown again</div>
+          <div class="flex items-center justify-between mb-2">
+            <div class="badge-success">Key Created — copy now, it won't be shown again</div>
+            <app-copy-button [value]="newKey" label="Copy API key" />
+          </div>
           <code class="block rounded bg-slate-950 p-3 font-mono text-sm text-emerald-400 break-all">{{ newKey }}</code>
         </div>
       }

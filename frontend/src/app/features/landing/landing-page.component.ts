@@ -2,29 +2,14 @@ import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ButtonComponent } from '../../shared/components/button/button.component';
+import { PublicNavComponent } from '../../shared/components/public-nav/public-nav.component';
 
 @Component({
   selector: 'app-landing-page',
   standalone: true,
-  imports: [CommonModule, RouterLink, ButtonComponent],
+  imports: [CommonModule, RouterLink, ButtonComponent, PublicNavComponent],
   template: `
-    <nav class="fixed top-0 z-50 w-full border-b border-slate-800/60 bg-slate-950/85 backdrop-blur-xl">
-      <div class="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-        <div class="flex items-center gap-3">
-          <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-emerald-500 text-sm font-bold shadow-lg shadow-brand-600/30">CP</div>
-          <span class="text-lg font-bold text-white">ChainProof</span>
-        </div>
-        <div class="hidden items-center gap-8 md:flex">
-          <a routerLink="/" class="text-sm text-slate-400 hover:text-white transition-colors">Product</a>
-          <a routerLink="/pricing" class="text-sm text-slate-400 hover:text-white transition-colors">Pricing</a>
-          <a routerLink="/docs" class="text-sm text-slate-400 hover:text-white transition-colors">Docs</a>
-        </div>
-        <div class="flex items-center gap-3">
-          <a routerLink="/login" class="btn-ghost">Sign in</a>
-          <a routerLink="/register"><app-button>Start Free</app-button></a>
-        </div>
-      </div>
-    </nav>
+    <app-public-nav />
 
     <section class="relative overflow-hidden pt-28 pb-24 lg:pt-36">
       <div class="hero-glow absolute inset-0 -z-10"></div>

@@ -246,7 +246,7 @@ func (s *SiteService) PollProtectedEndpoints(ctx context.Context, orgSlug, secre
 		if body == "" && strings.EqualFold(method, http.MethodPost) {
 			body = `{}`
 		}
-		status, respBody, err := s.callEndpoint(ctx, baseURL, auth, method, path, body)
+		status, respBody, err := s.invokeEndpoint(ctx, orgSlug, secret, siteID, baseURL, settings, auth, method, path, body)
 		if err != nil || status == 0 {
 			continue
 		}

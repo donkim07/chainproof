@@ -54,7 +54,7 @@ func main() {
 	tenantResolver := tenant.NewResolver(platformDB, cfg)
 	defer tenantResolver.Close()
 
-	fabricClient := blockchain.NewClient(cfg.FabricGatewayURL, cfg.FabricGatewayKey)
+	fabricClient := blockchain.NewClient(cfg.FabricGatewayURL, cfg.FabricGatewayKey, cfg.FabricDevMock)
 	integritySvc := services.NewIntegrityService(tenantResolver, fabricClient)
 	siteSvc := services.NewSiteService(tenantResolver)
 	apiKeySvc := services.NewAPIKeyService(tenantResolver)
@@ -180,6 +180,9 @@ func runMonitor(integrity *services.IntegrityService, sites *services.SiteServic
 			}
 			if n, err := integrity.RunMonitor(ctx, slug); err == nil && n > 0 {
 				log.Printf("monitor: %d tamper alerts for org %s", n, slug)
+			}
+			if n, err := integrity.RetryFailedAnchors(ctx, slug); err == nil && n > 0 {
+				log.Printf("retry: re-anchored %d failed records for org %s", n, slug)
 			}
 			if n, err := sites.PollProtectedEndpoints(ctx, slug, secret, integrity); err == nil && n > 0 {
 				log.Printf("poll: anchored %d endpoint responses for org %s", n, slug)
