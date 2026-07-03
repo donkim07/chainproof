@@ -65,12 +65,12 @@ func main() {
 
 	authHandler := handlers.NewAuthHandler(authSvc)
 	integrityHandler := handlers.NewIntegrityHandler(integritySvc, platformDB)
-	siteHandler := handlers.NewSiteHandler(siteSvc, platformDB)
+	siteHandler := handlers.NewSiteHandler(siteSvc, integritySvc, platformDB, cfg.JWTSecret)
 	apiKeyHandler := handlers.NewAPIKeyHandler(apiKeySvc, platformDB)
 	teamHandler := handlers.NewTeamHandler(teamSvc, platformDB)
 	notificationHandler := handlers.NewNotificationHandler(notificationSvc, platformDB)
 	attributionHandler := handlers.NewAttributionHandler(attributionSvc, platformDB)
-	proxyHandler := handlers.NewProxyHandler(siteSvc, platformDB)
+	proxyHandler := handlers.NewProxyHandler(siteSvc, integritySvc, platformDB, cfg.JWTSecret)
 	platformHandler := handlers.NewPlatformHandler(platformSvc)
 
 	if cfg.Env == "production" {
@@ -105,6 +105,7 @@ func main() {
 		{
 			protected.GET("/auth/me", authHandler.Me)
 			protected.GET("/dashboard/stats", integrityHandler.DashboardStats)
+			protected.GET("/dashboard/analytics", siteHandler.Analytics)
 
 			protected.POST("/integrity/anchor", integrityHandler.Anchor)
 			protected.POST("/integrity/verify", integrityHandler.Verify)
@@ -121,6 +122,10 @@ func main() {
 			protected.POST("/sites/:id/endpoints", siteHandler.AddEndpoint)
 			protected.PATCH("/sites/:id/endpoints/:epId", siteHandler.ToggleEndpoint)
 			protected.DELETE("/sites/:id/endpoints/:epId", siteHandler.DeleteEndpoint)
+			protected.GET("/sites/:id/auth", siteHandler.GetAuth)
+			protected.PUT("/sites/:id/auth", siteHandler.UpdateAuth)
+			protected.POST("/sites/:id/test-endpoint", siteHandler.TestEndpoint)
+			protected.GET("/sites/:id/captures", siteHandler.ListCaptures)
 			protected.Any("/proxy/:id/*path", proxyHandler.Forward)
 
 			protected.GET("/api-keys", apiKeyHandler.List)
@@ -143,11 +148,15 @@ func main() {
 			{
 				admin.GET("/overview", platformHandler.Overview)
 				admin.GET("/organizations", platformHandler.ListOrganizations)
+				admin.PATCH("/organizations/:id", platformHandler.UpdateOrganization)
+				admin.GET("/users", platformHandler.ListUsers)
+				admin.GET("/audit-logs", platformHandler.ListAuditLogs)
+				admin.GET("/plans", platformHandler.ListPlansAdmin)
 			}
 		}
 	}
 
-	go runMonitor(integritySvc, tenantResolver, platformDB)
+	go runMonitor(integritySvc, siteSvc, tenantResolver, platformDB, cfg.JWTSecret)
 
 	log.Printf("ChainProof API starting on :%s", cfg.Port)
 	if err := r.Run(":" + cfg.Port); err != nil {
@@ -155,7 +164,7 @@ func main() {
 	}
 }
 
-func runMonitor(integrity *services.IntegrityService, resolver *tenant.Resolver, platform *database.PlatformDB) {
+func runMonitor(integrity *services.IntegrityService, sites *services.SiteService, resolver *tenant.Resolver, platform *database.PlatformDB, secret string) {
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
 	for range ticker.C {
@@ -171,6 +180,9 @@ func runMonitor(integrity *services.IntegrityService, resolver *tenant.Resolver,
 			}
 			if n, err := integrity.RunMonitor(ctx, slug); err == nil && n > 0 {
 				log.Printf("monitor: %d tamper alerts for org %s", n, slug)
+			}
+			if n, err := sites.PollProtectedEndpoints(ctx, slug, secret, integrity); err == nil && n > 0 {
+				log.Printf("poll: anchored %d endpoint responses for org %s", n, slug)
 			}
 		}
 		rows.Close()

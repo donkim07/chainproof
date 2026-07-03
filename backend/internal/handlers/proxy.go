@@ -15,12 +15,14 @@ import (
 )
 
 type ProxyHandler struct {
-	sites    *services.SiteService
-	platform *database.PlatformDB
+	sites     *services.SiteService
+	integrity *services.IntegrityService
+	platform  *database.PlatformDB
+	secret    string
 }
 
-func NewProxyHandler(sites *services.SiteService, platform *database.PlatformDB) *ProxyHandler {
-	return &ProxyHandler{sites: sites, platform: platform}
+func NewProxyHandler(sites *services.SiteService, integrity *services.IntegrityService, platform *database.PlatformDB, secret string) *ProxyHandler {
+	return &ProxyHandler{sites: sites, integrity: integrity, platform: platform, secret: secret}
 }
 
 func (h *ProxyHandler) Forward(c *gin.Context) {
@@ -44,6 +46,8 @@ func (h *ProxyHandler) Forward(c *gin.Context) {
 		return
 	}
 
+	auth, _ := h.sites.GetSiteAuth(c.Request.Context(), slug, siteID, h.secret)
+
 	path := c.Param("path")
 	if path == "" {
 		path = "/"
@@ -58,23 +62,22 @@ func (h *ProxyHandler) Forward(c *gin.Context) {
 			pr.Out.URL.RawQuery = c.Request.URL.RawQuery
 			pr.Out.Host = targetURL.Host
 			pr.Out.Header.Set("X-ChainProof-Proxy", "true")
+			h.sites.ApplyAuthHeaders(pr.Out, auth)
 		},
 		ModifyResponse: func(resp *http.Response) error {
 			respBody := readBody(resp.Body)
 			resp.Body = io.NopCloser(bytes.NewReader(respBody))
+			reqText := safeText(reqBody)
+			respText := safeText(respBody)
 			_ = h.sites.CaptureProxyLog(
-				c.Request.Context(),
-				slug,
-				siteID,
-				c.Request.Method,
-				path,
-				c.Request.URL.RawQuery,
-				resp.StatusCode,
-				c.Request.Header,
-				resp.Header,
-				safeText(reqBody),
-				safeText(respBody),
-				clientIP(c),
+				c.Request.Context(), slug, siteID,
+				c.Request.Method, path, c.Request.URL.RawQuery,
+				resp.StatusCode, c.Request.Header, resp.Header,
+				reqText, respText, clientIP(c),
+			)
+			_ = h.sites.AnchorIfProtected(
+				c.Request.Context(), slug, h.secret, siteID,
+				c.Request.Method, path, reqText, respText, h.integrity,
 			)
 			return nil
 		},
@@ -91,7 +94,7 @@ func readBody(r io.ReadCloser) []byte {
 	if r == nil {
 		return nil
 	}
-	b, _ := io.ReadAll(io.LimitReader(r, 4096))
+	b, _ := io.ReadAll(io.LimitReader(r, 8192))
 	_ = r.Close()
 	return b
 }

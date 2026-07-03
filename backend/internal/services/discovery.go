@@ -43,42 +43,6 @@ var jsRoutePatterns = []*regexp.Regexp{
 	regexp.MustCompile(`url:\s*["']([^"']+)["']`),
 }
 
-func (s *SiteService) collectDiscoveryCandidates(ctx context.Context, base *url.URL) map[string]string {
-	candidates := map[string]string{} // path -> source
-
-	for _, p := range apiWordlist {
-		if !shouldSkipPath(p) {
-			candidates[p] = "wordlist"
-		}
-	}
-
-	for _, p := range s.discoverFromHTML(ctx, base) {
-		if !shouldSkipPath(p) {
-			candidates[p] = "html"
-		}
-	}
-
-	for _, p := range s.discoverFromRobots(ctx, base) {
-		if !shouldSkipPath(p) {
-			candidates[p] = "robots"
-		}
-	}
-
-	for _, p := range s.discoverFromOpenAPI(ctx, base) {
-		if !shouldSkipPath(p) {
-			candidates[p] = "openapi"
-		}
-	}
-
-	for _, p := range s.discoverFromJSBundles(ctx, base) {
-		if !shouldSkipPath(p) {
-			candidates[p] = "javascript"
-		}
-	}
-
-	return candidates
-}
-
 func (s *SiteService) discoverFromRobots(ctx context.Context, base *url.URL) []string {
 	robotsURL := base.Scheme + "://" + base.Host + "/robots.txt"
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, robotsURL, nil)

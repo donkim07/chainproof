@@ -105,30 +105,43 @@ func (s *SiteService) DiscoverEndpoints(ctx context.Context, orgSlug string, sit
 
 	candidates := s.collectDiscoveryCandidates(ctx, u)
 
-	paths := make([]string, 0, len(candidates))
-	for p := range candidates {
-		paths = append(paths, p)
+	type pathProbe struct {
+		path     string
+		sources  []string
+		priority int
 	}
-	sort.Strings(paths)
+	probes := make([]pathProbe, 0, len(candidates))
+	for path, sources := range candidates {
+		probes = append(probes, pathProbe{path: path, sources: sources, priority: discoveryPriority(sources)})
+	}
+	sort.Slice(probes, func(i, j int) bool {
+		if probes[i].priority != probes[j].priority {
+			return probes[i].priority > probes[j].priority
+		}
+		return probes[i].path < probes[j].path
+	})
 
 	var discovered []models.DiscoveredEndpoint
-	for _, path := range paths {
-		source := candidates[path]
-		seeded := source == "wordlist" || source == "openapi"
-		status, methods := s.probeEndpoint(ctx, baseURL, path, seeded)
+	for _, probe := range probes {
+		seeded := containsSource(probe.sources, "wordlist") || containsSource(probe.sources, "openapi")
+		status, methods := s.probeEndpoint(ctx, baseURL, probe.path, seeded)
 		if status == 0 {
 			continue
 		}
 		for _, method := range methods {
-			ep := models.DiscoveredEndpoint{Method: method, Path: path, Status: status, Source: source}
+			ep := models.DiscoveredEndpoint{
+				Method: method, Path: probe.path, Status: status,
+				Source: primarySource(probe.sources), Sources: probe.sources, Priority: probe.priority,
+			}
 			discovered = append(discovered, ep)
 			_, _ = pool.Exec(ctx, `
 				INSERT INTO protected_endpoints (site_id, method, path_pattern, enabled, auto_discovered)
 				VALUES ($1, $2, $3, false, true)
 				ON CONFLICT (site_id, method, path_pattern) DO NOTHING`,
-				siteID, method, path)
+				siteID, method, probe.path)
 		}
 	}
+	sortDiscovered(discovered)
 	return discovered, nil
 }
 

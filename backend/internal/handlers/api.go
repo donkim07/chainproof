@@ -110,12 +110,14 @@ func (h *IntegrityHandler) DashboardStats(c *gin.Context) {
 }
 
 type SiteHandler struct {
-	sites    *services.SiteService
-	platform *database.PlatformDB
+	sites     *services.SiteService
+	integrity *services.IntegrityService
+	platform  *database.PlatformDB
+	secret    string
 }
 
-func NewSiteHandler(s *services.SiteService, platform *database.PlatformDB) *SiteHandler {
-	return &SiteHandler{sites: s, platform: platform}
+func NewSiteHandler(s *services.SiteService, integrity *services.IntegrityService, platform *database.PlatformDB, secret string) *SiteHandler {
+	return &SiteHandler{sites: s, integrity: integrity, platform: platform, secret: secret}
 }
 
 func (h *SiteHandler) Create(c *gin.Context) {
@@ -318,6 +320,109 @@ func (h *SiteHandler) DeleteEndpoint(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
+func (h *SiteHandler) GetAuth(c *gin.Context) {
+	slug, ok := requireOrgSlug(c, h.platform)
+	if !ok {
+		return
+	}
+	siteID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid site id"})
+		return
+	}
+	auth, err := h.sites.GetAuthSettings(c.Request.Context(), slug, siteID, h.secret)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, auth)
+}
+
+func (h *SiteHandler) UpdateAuth(c *gin.Context) {
+	slug, ok := requireOrgSlug(c, h.platform)
+	if !ok {
+		return
+	}
+	siteID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid site id"})
+		return
+	}
+	var req services.SiteAuthSettings
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	auth, err := h.sites.UpdateAuthSettings(c.Request.Context(), slug, siteID, h.secret, req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, auth)
+}
+
+func (h *SiteHandler) TestEndpoint(c *gin.Context) {
+	slug, ok := requireOrgSlug(c, h.platform)
+	if !ok {
+		return
+	}
+	siteID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid site id"})
+		return
+	}
+	var body struct {
+		Method string `json:"method" binding:"required"`
+		Path   string `json:"path" binding:"required"`
+		Body   string `json:"body"`
+		Anchor bool   `json:"anchor"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	result, err := h.sites.TestEndpoint(c.Request.Context(), slug, h.secret, siteID, body.Method, body.Path, body.Body, body.Anchor, h.integrity)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
+func (h *SiteHandler) ListCaptures(c *gin.Context) {
+	slug, ok := requireOrgSlug(c, h.platform)
+	if !ok {
+		return
+	}
+	siteID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid site id"})
+		return
+	}
+	logs, err := h.sites.ListCaptureLogs(c.Request.Context(), slug, siteID, 50)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if logs == nil {
+		logs = []models.ProxyCaptureLog{}
+	}
+	c.JSON(http.StatusOK, logs)
+}
+
+func (h *SiteHandler) Analytics(c *gin.Context) {
+	slug, ok := requireOrgSlug(c, h.platform)
+	if !ok {
+		return
+	}
+	data, err := h.sites.TenantAnalytics(c.Request.Context(), slug)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, data)
+}
+
 type APIKeyHandler struct {
 	keys     *services.APIKeyService
 	platform *database.PlatformDB
@@ -412,12 +517,59 @@ func (h *PlatformHandler) ListOrganizations(c *gin.Context) {
 }
 
 func (h *PlatformHandler) Overview(c *gin.Context) {
-	overview, err := h.db.Overview(c.Request.Context())
+	overview, err := h.db.Stats(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, overview)
+}
+
+func (h *PlatformHandler) ListUsers(c *gin.Context) {
+	users, err := h.db.ListUsers(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if users == nil {
+		users = []models.PlatformUser{}
+	}
+	c.JSON(http.StatusOK, users)
+}
+
+func (h *PlatformHandler) ListAuditLogs(c *gin.Context) {
+	logs, err := h.db.ListAuditLogs(c.Request.Context(), 100)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, logs)
+}
+
+func (h *PlatformHandler) UpdateOrganization(c *gin.Context) {
+	orgID := c.Param("id")
+	var body struct {
+		Active   *bool   `json:"active"`
+		PlanSlug *string `json:"plan_slug"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := h.db.UpdateOrganization(c.Request.Context(), orgID, body.Active, body.PlanSlug); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+func (h *PlatformHandler) ListPlansAdmin(c *gin.Context) {
+	plans, err := h.db.ListPlansAdmin(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, plans)
 }
 
 func (h *PlatformHandler) Health(c *gin.Context) {

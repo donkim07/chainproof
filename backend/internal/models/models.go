@@ -200,8 +200,21 @@ type NotificationChannel struct {
 }
 
 type DiscoveredEndpoint struct {
-	Method string `json:"method"`
-	Path   string `json:"path"`
-	Status int    `json:"status,omitempty"`
-	Source string `json:"source,omitempty"`
+	Method   string   `json:"method"`
+	Path     string   `json:"path"`
+	Status   int      `json:"status,omitempty"`
+	Source   string   `json:"source,omitempty"`
+	Sources  []string `json:"sources,omitempty"`
+	Priority int      `json:"priority,omitempty"`
+}
+
+type ProxyCaptureLog struct {
+	ID           uuid.UUID `json:"id"`
+	SiteID       uuid.UUID `json:"site_id"`
+	Method       string    `json:"method"`
+	Path         string    `json:"path"`
+	StatusCode   int       `json:"status_code"`
+	RequestBody  string    `json:"request_body,omitempty"`
+	ResponseBody string    `json:"response_body,omitempty"`
+	CapturedAt   time.Time `json:"captured_at"`
 }
