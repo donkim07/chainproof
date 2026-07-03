@@ -41,10 +41,10 @@ type PlatformUser struct {
 }
 
 type RegisterRequest struct {
-	Email        string `json:"email" binding:"required,email"`
-	Password     string `json:"password" binding:"required,min=8"`
-	FullName     string `json:"full_name" binding:"required"`
-	OrgName      string `json:"org_name" binding:"required"`
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required,min=8"`
+	FullName string `json:"full_name" binding:"required"`
+	OrgName  string `json:"org_name" binding:"required"`
 }
 
 type LoginRequest struct {
@@ -67,6 +67,13 @@ type Site struct {
 	Status          string    `json:"status"`
 	DBType          *string   `json:"db_type,omitempty"`
 	CreatedAt       time.Time `json:"created_at"`
+}
+
+type SiteUpsertRequest struct {
+	Name            string  `json:"name" binding:"required"`
+	BaseURL         string  `json:"base_url" binding:"required,url"`
+	IntegrationMode string  `json:"integration_mode"`
+	DBType          *string `json:"db_type,omitempty"`
 }
 
 type ProtectedEndpoint struct {
@@ -135,11 +142,11 @@ type VerifyResponse struct {
 }
 
 type DashboardStats struct {
-	TotalSites       int `json:"total_sites"`
+	TotalSites         int `json:"total_sites"`
 	ProtectedEndpoints int `json:"protected_endpoints"`
-	AnchoredRecords  int `json:"anchored_records"`
-	OpenIncidents    int `json:"open_incidents"`
-	TamperedRecords  int `json:"tampered_records"`
+	AnchoredRecords    int `json:"anchored_records"`
+	OpenIncidents      int `json:"open_incidents"`
+	TamperedRecords    int `json:"tampered_records"`
 }
 
 type APIKey struct {
@@ -169,8 +176,32 @@ type TenantUser struct {
 	Active   bool      `json:"active"`
 }
 
+type TeamUserCreateRequest struct {
+	Email    string   `json:"email" binding:"required,email"`
+	FullName string   `json:"full_name" binding:"required"`
+	Password string   `json:"password" binding:"required,min=8"`
+	Roles    []string `json:"roles"`
+}
+
+type TeamUserUpdateRequest struct {
+	FullName *string   `json:"full_name,omitempty"`
+	Active   *bool     `json:"active,omitempty"`
+	Roles    *[]string `json:"roles,omitempty"`
+}
+
+type NotificationChannel struct {
+	ID          uuid.UUID              `json:"id"`
+	Name        string                 `json:"name"`
+	ChannelType string                 `json:"channel_type"`
+	Config      map[string]interface{} `json:"config"`
+	Events      []string               `json:"events"`
+	Active      bool                   `json:"active"`
+	CreatedAt   time.Time              `json:"created_at"`
+}
+
 type DiscoveredEndpoint struct {
 	Method string `json:"method"`
 	Path   string `json:"path"`
 	Status int    `json:"status,omitempty"`
+	Source string `json:"source,omitempty"`
 }

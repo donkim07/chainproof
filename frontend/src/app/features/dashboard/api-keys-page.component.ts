@@ -44,6 +44,10 @@ interface APIKey {
       }
 
       <div class="card overflow-hidden p-0">
+        <div class="border-b border-slate-800 p-4 flex items-center justify-between gap-3">
+          <input class="input-field max-w-sm" [(ngModel)]="q" placeholder="Search API keys..." />
+          <span class="text-sm text-slate-400">{{ filtered.length }} keys</span>
+        </div>
         <table class="w-full text-sm">
           <thead class="border-b border-slate-700 bg-slate-800/50">
             <tr>
@@ -54,7 +58,7 @@ interface APIKey {
             </tr>
           </thead>
           <tbody>
-            @for (key of keys; track key.id) {
+            @for (key of paged(); track key.id) {
               <tr class="border-b border-slate-800">
                 <td class="px-4 py-3 text-white">{{ key.name }}</td>
                 <td class="px-4 py-3 font-mono text-xs text-slate-400">{{ key.key_prefix }}...</td>
@@ -70,12 +74,22 @@ interface APIKey {
             }
           </tbody>
         </table>
+        <div class="border-t border-slate-800 p-4 flex items-center justify-between text-sm">
+          <span class="text-slate-400">Page {{ page }} / {{ pages }}</span>
+          <div class="space-x-2">
+            <button class="btn-ghost" [disabled]="page===1" (click)="page = page - 1">Prev</button>
+            <button class="btn-ghost" [disabled]="page===pages" (click)="page = page + 1">Next</button>
+          </div>
+        </div>
       </div>
     </div>
   `,
 })
 export class ApiKeysPageComponent implements OnInit {
   keys: APIKey[] = [];
+  q = '';
+  page = 1;
+  pageSize = 8;
   showCreate = false;
   keyName = '';
   creating = false;
@@ -84,6 +98,22 @@ export class ApiKeysPageComponent implements OnInit {
   constructor(private api: ApiService, private toast: ToastService) {}
   ngOnInit() { this.load(); }
   load() { this.api.get<APIKey[]>('/api/v1/api-keys').subscribe(k => this.keys = k); }
+
+  get filtered() {
+    const q = this.q.trim().toLowerCase();
+    if (!q) return this.keys;
+    return this.keys.filter(k => `${k.name} ${k.key_prefix}`.toLowerCase().includes(q));
+  }
+
+  get pages() {
+    return Math.max(1, Math.ceil(this.filtered.length / this.pageSize));
+  }
+
+  paged() {
+    if (this.page > this.pages) this.page = this.pages;
+    const start = (this.page - 1) * this.pageSize;
+    return this.filtered.slice(start, start + this.pageSize);
+  }
 
   createKey() {
     this.creating = true;

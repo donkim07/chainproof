@@ -1,9 +1,12 @@
 import { Component, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ButtonComponent } from '../../shared/components/button/button.component';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
+import { StatCardComponent } from '../../shared/components/stat-card/stat-card.component';
 
 interface Org {
   id: string;
@@ -11,6 +14,7 @@ interface Org {
   slug: string;
   plan_slug: string;
   subscription_status: string;
+  payment_status?: string;
   active: boolean;
   created_at: string;
 }
@@ -18,74 +22,133 @@ interface Org {
 interface Overview {
   total_organizations: number;
   total_users: number;
+  active_subscriptions?: number;
+  total_plans?: number;
   organizations: Org[];
 }
 
 @Component({
   selector: 'app-platform-page',
   standalone: true,
-  imports: [CommonModule, RouterLink, ButtonComponent],
+  imports: [CommonModule, RouterLink, FormsModule, ButtonComponent, PageHeaderComponent, StatCardComponent],
   template: `
-    <div class="space-y-6">
-      <div>
-        <div class="badge-info mb-2">Platform Admin</div>
-        <h1 class="text-2xl font-bold text-white">Platform Overview</h1>
-        <p class="text-slate-400">Super admin view — manage all organizations on ChainProof.</p>
-      </div>
+    <app-page-header
+      title="Platform Command Center"
+      subtitle="Super-admin view across all tenants, plans, and subscription health."
+      badge="Super Admin">
+      <a actions routerLink="/register"><app-button variant="secondary">+ New Organization</app-button></a>
+    </app-page-header>
 
-      <div class="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
-        The <strong>admin&#64;chainproof.io</strong> account is a platform super-admin and is not tied to any organization.
-        To use Sites, API Keys, and tamper monitoring, <a routerLink="/register" class="underline text-white">register a new organization</a>
-        or sign in with an owner account.
-      </div>
+    <div class="rounded-xl border border-amber-500/25 bg-gradient-to-r from-amber-500/10 to-transparent p-4 mb-6 text-sm text-amber-100">
+      <strong>Platform account</strong> — not tied to a tenant org. To test Sites, API Keys, and monitoring,
+      <a routerLink="/register" class="underline text-white font-medium">register an organization</a> or sign in as an owner.
+    </div>
 
-      <div class="grid gap-4 sm:grid-cols-2">
-        <div class="card">
-          <div class="text-sm text-slate-400">Organizations</div>
-          <div class="mt-2 text-3xl font-bold text-brand-400">{{ overview?.total_organizations ?? '—' }}</div>
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+      <app-stat-card label="Organizations" [value]="overview?.total_organizations ?? '—'" color="text-brand-400" icon="&#127970;" hint="Active tenants"></app-stat-card>
+      <app-stat-card label="Platform Users" [value]="overview?.total_users ?? '—'" color="text-white" icon="&#128101;"></app-stat-card>
+      <app-stat-card label="Active Subscriptions" [value]="overview?.active_subscriptions ?? '—'" color="text-emerald-400" icon="&#9989;"></app-stat-card>
+      <app-stat-card label="Plans Available" [value]="overview?.total_plans ?? '—'" color="text-amber-400" icon="&#128176;"></app-stat-card>
+    </div>
+
+    <div class="grid gap-6 xl:grid-cols-3 mb-8">
+      <div class="card xl:col-span-2 p-0 overflow-hidden">
+        <div class="table-toolbar">
+          <div>
+            <h2 class="font-semibold text-white">All Organizations</h2>
+            <p class="text-xs text-slate-500">Tenant isolation — each org gets a dedicated PostgreSQL database</p>
+          </div>
+          <input class="input-field max-w-xs" [(ngModel)]="q" placeholder="Filter orgs..." />
         </div>
-        <div class="card">
-          <div class="text-sm text-slate-400">Platform Users</div>
-          <div class="mt-2 text-3xl font-bold text-white">{{ overview?.total_users ?? '—' }}</div>
-        </div>
-      </div>
-
-      <div class="card overflow-hidden p-0">
-        <div class="border-b border-slate-700 px-4 py-3 font-medium text-white">All Organizations</div>
-        <table class="w-full text-sm">
-          <thead class="border-b border-slate-700 bg-slate-800/50">
-            <tr>
-              <th class="px-4 py-3 text-left text-slate-400">Name</th>
-              <th class="px-4 py-3 text-left text-slate-400">Slug</th>
-              <th class="px-4 py-3 text-left text-slate-400">Plan</th>
-              <th class="px-4 py-3 text-left text-slate-400">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (org of overview?.organizations ?? []; track org.id) {
-              <tr class="border-b border-slate-800">
-                <td class="px-4 py-3 text-white">{{ org.name }}</td>
-                <td class="px-4 py-3 font-mono text-xs text-slate-400">{{ org.slug }}</td>
-                <td class="px-4 py-3"><span class="badge-info">{{ org.plan_slug }}</span></td>
-                <td class="px-4 py-3"><span class="badge-success">{{ org.subscription_status }}</span></td>
+        <div class="overflow-x-auto">
+          <table class="cp-table">
+            <thead>
+              <tr>
+                <th>Organization</th>
+                <th>Slug</th>
+                <th>Plan</th>
+                <th>Subscription</th>
+                <th>Status</th>
+                <th>Created</th>
               </tr>
-            } @empty {
-              <tr><td colspan="4" class="px-4 py-8 text-center text-slate-500">No organizations yet.</td></tr>
-            }
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              @for (org of filteredOrgs; track org.id) {
+                <tr class="border-t border-slate-800 hover:bg-slate-800/30">
+                  <td class="font-medium text-white">{{ org.name }}</td>
+                  <td class="font-mono text-xs text-slate-400">{{ org.slug }}</td>
+                  <td><span class="badge-info">{{ org.plan_slug || 'free' }}</span></td>
+                  <td><span class="badge-success">{{ org.subscription_status }}</span></td>
+                  <td>
+                    <span [class]="org.active ? 'badge-success' : 'badge-danger'">{{ org.active ? 'active' : 'suspended' }}</span>
+                  </td>
+                  <td class="text-xs text-slate-500">{{ org.created_at | date:'mediumDate' }}</td>
+                </tr>
+              } @empty {
+                <tr><td colspan="6" class="py-12 text-center text-slate-500">No organizations registered yet.</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      <a routerLink="/register"><app-button>Register New Organization</app-button></a>
+      <div class="space-y-4">
+        <div class="card">
+          <h3 class="font-semibold text-white mb-4">System Health</h3>
+          <div class="space-y-3 text-sm">
+            <div class="flex justify-between items-center rounded-lg bg-slate-800/50 px-3 py-2">
+              <span class="text-slate-400">API</span>
+              <span class="badge-success">operational</span>
+            </div>
+            <div class="flex justify-between items-center rounded-lg bg-slate-800/50 px-3 py-2">
+              <span class="text-slate-400">Platform DB</span>
+              <span class="badge-success">connected</span>
+            </div>
+            <div class="flex justify-between items-center rounded-lg bg-slate-800/50 px-3 py-2">
+              <span class="text-slate-400">Fabric Gateway</span>
+              <span class="badge-warning">dev mode</span>
+            </div>
+            <div class="flex justify-between items-center rounded-lg bg-slate-800/50 px-3 py-2">
+              <span class="text-slate-400">Tenant DBs</span>
+              <span class="badge-info">{{ overview?.total_organizations ?? 0 }} provisioned</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 class="font-semibold text-white mb-3">Admin Quick Actions</h3>
+          <div class="space-y-2">
+            <a routerLink="/docs" class="block rounded-lg border border-slate-700 px-3 py-2.5 text-sm text-slate-300 hover:border-brand-500/40 transition-colors">View API documentation</a>
+            <a routerLink="/pricing" class="block rounded-lg border border-slate-700 px-3 py-2.5 text-sm text-slate-300 hover:border-brand-500/40 transition-colors">Manage pricing plans</a>
+            <a routerLink="/register" class="block rounded-lg border border-slate-700 px-3 py-2.5 text-sm text-slate-300 hover:border-brand-500/40 transition-colors">Provision new tenant</a>
+          </div>
+        </div>
+
+        <div class="card border-brand-500/20">
+          <h3 class="font-semibold text-white mb-2">Architecture</h3>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Platform PostgreSQL holds orgs, billing, and users. Each tenant gets an isolated DB for sites,
+            endpoints, integrity records, and audit logs. Hashes anchor to Hyperledger Fabric.
+          </p>
+        </div>
+      </div>
     </div>
   `,
 })
 export class PlatformPageComponent implements OnInit {
   overview: Overview | null = null;
+  q = '';
+
   constructor(private api: ApiService, public auth: AuthService) {}
+
   ngOnInit() {
-    this.api.get<Overview>('/api/v1/platform/overview').subscribe({
-      next: o => this.overview = o,
-    });
+    this.api.get<Overview>('/api/v1/platform/overview').subscribe({ next: o => this.overview = o });
+  }
+
+  get filteredOrgs() {
+    const list = this.overview?.organizations ?? [];
+    const v = this.q.trim().toLowerCase();
+    if (!v) return list;
+    return list.filter(o => `${o.name} ${o.slug} ${o.plan_slug}`.toLowerCase().includes(v));
   }
 }

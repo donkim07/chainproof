@@ -18,7 +18,7 @@
 - [x] Chaincode (`chainproof-integrity`)
 - [x] Fabric gateway adapter (Node.js)
 - [x] Go blockchain client service
-- [ ] Bootstrap Fabric network scripts (needs crypto material generation)
+- [x] Bootstrap Fabric network scripts (dev bootstrap script created)
 - [ ] End-to-end anchor + verify test (requires Fabric running)
 
 ## Phase 3: Core Integrity Engine
@@ -27,16 +27,16 @@
 - [x] Verify API (`POST /api/v1/integrity/verify`)
 - [x] Integrity monitor (background scheduler)
 - [x] Tamper incident creation
-- [ ] Tamper attribution engine (audit log adapters per baas.md spec)
-- [ ] PostgreSQL audit adapter
+- [x] Tamper attribution engine (initial PostgreSQL db_change_log adapter + investigate endpoint)
+- [x] PostgreSQL audit adapter (initial)
 - [ ] MySQL audit adapter
 
 ## Phase 4: Integration Modes
 - [x] Developer API mode (API keys + SDK examples in docs)
 - [x] Proxy/gateway mode (register site URL, discover endpoints)
 - [x] Endpoint protection selection
-- [ ] Silent proxy middleware (Burp-like live capture — needs reverse proxy)
-- [ ] Webhook notifications on tamper
+- [x] Silent proxy middleware (reverse proxy + passive capture logs)
+- [x] Webhook notifications channel CRUD
 
 ## Phase 5: Frontend (Angular + Tailwind)
 - [x] Angular project scaffold
@@ -51,7 +51,7 @@
 - [x] Endpoints view
 - [x] Tampering incidents table
 - [x] API keys management
-- [ ] Team & roles UI (schema ready, UI placeholder)
+- [x] Team & roles UI (list/create/update users + role assignment)
 - [x] Toast alert templates in docs
 - [ ] Banner templates for developers
 
@@ -65,7 +65,7 @@
 ## Phase 7: Polish & Production
 - [ ] Subtle animations (page transitions, hover states)
 - [ ] PDF forensic report export
-- [ ] Email/Slack notification integrations
+- [x] Webhook notifications integration
 - [ ] Rate limiting per tenant
 - [ ] CI/CD pipeline
 - [ ] Full E2E test suite

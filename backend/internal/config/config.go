@@ -9,20 +9,20 @@ import (
 )
 
 type Config struct {
-	Port               string
-	Env                string
-	DatabaseURL        string
-	TenantDBHost       string
-	TenantDBPort       string
-	TenantDBUser       string
-	TenantDBPassword   string
-	JWTSecret          string
-	JWTExpiryHours     int
-	FabricGatewayURL   string
-	FabricGatewayKey   string
-	SeedAdminEmail     string
-	SeedAdminPassword  string
-	CORSOrigins        []string
+	Port              string
+	Env               string
+	DatabaseURL       string
+	TenantDBHost      string
+	TenantDBPort      string
+	TenantDBUser      string
+	TenantDBPassword  string
+	JWTSecret         string
+	JWTExpiryHours    int
+	FabricGatewayURL  string
+	FabricGatewayKey  string
+	SeedAdminEmail    string
+	SeedAdminPassword string
+	CORSOrigins       []string
 }
 
 func Load() (*Config, error) {

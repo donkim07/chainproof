@@ -15,9 +15,9 @@ import (
 )
 
 type AuthService struct {
-	db     *database.PlatformDB
-	jwt    *auth.JWTService
-	cfg    *config.Config
+	db               *database.PlatformDB
+	jwt              *auth.JWTService
+	cfg              *config.Config
 	tenantMigrations string
 }
 
@@ -85,15 +85,13 @@ func (s *AuthService) Register(ctx context.Context, req models.RegisterRequest) 
 	if err == nil {
 		ownerHash, _ := auth.HashPassword(req.Password)
 		_, _ = tenantPool.Exec(ctx, `
-			INSERT INTO users (email, password_hash, full_name)
-			VALUES ($1, $2, $3) ON CONFLICT (email) DO NOTHING`,
-			req.Email, ownerHash, req.FullName)
+			INSERT INTO users (id, email, password_hash, full_name)
+			VALUES ($1, $2, $3, $4) ON CONFLICT (email) DO UPDATE SET full_name = EXCLUDED.full_name`,
+			userID, req.Email, ownerHash, req.FullName)
 		var adminRoleID uuid.UUID
 		_ = tenantPool.QueryRow(ctx, `SELECT id FROM roles WHERE name = 'admin'`).Scan(&adminRoleID)
-		var tenantUserID uuid.UUID
-		_ = tenantPool.QueryRow(ctx, `SELECT id FROM users WHERE email = $1`, req.Email).Scan(&tenantUserID)
 		_, _ = tenantPool.Exec(ctx, `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-			tenantUserID, adminRoleID)
+			userID, adminRoleID)
 		tenantPool.Close()
 	}
 

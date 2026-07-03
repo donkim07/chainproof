@@ -13,8 +13,8 @@ import (
 )
 
 type IntegrityService struct {
-	tenant   *tenant.Resolver
-	fabric   *blockchain.Client
+	tenant *tenant.Resolver
+	fabric *blockchain.Client
 }
 
 func NewIntegrityService(t *tenant.Resolver, fabric *blockchain.Client) *IntegrityService {

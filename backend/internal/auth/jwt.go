@@ -19,7 +19,7 @@ type Claims struct {
 }
 
 type JWTService struct {
-	secret     []byte
+	secret      []byte
 	expiryHours int
 }
 

@@ -70,11 +70,19 @@ func (s *PlatformService) Overview(ctx context.Context) (map[string]interface{},
 	var userCount int
 	_ = s.db.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM platform_users WHERE active = true`).Scan(&userCount)
 
+	var planCount int
+	_ = s.db.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM plans WHERE active = true`).Scan(&planCount)
+
+	var activeSubs int
+	_ = s.db.Pool.QueryRow(ctx, `SELECT COUNT(*) FROM organizations WHERE active = true AND subscription_status = 'active'`).Scan(&activeSubs)
+
 	orgs, _ := s.ListOrganizations(ctx)
 
 	return map[string]interface{}{
 		"total_organizations": orgCount,
 		"total_users":         userCount,
+		"active_subscriptions": activeSubs,
+		"total_plans":         planCount,
 		"organizations":       orgs,
 	}, nil
 }

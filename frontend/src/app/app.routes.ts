@@ -10,6 +10,9 @@ import { SitesPageComponent } from './features/dashboard/sites-page.component';
 import { IncidentsPageComponent } from './features/dashboard/incidents-page.component';
 import { ApiKeysPageComponent } from './features/dashboard/api-keys-page.component';
 import { PlatformPageComponent } from './features/dashboard/platform-page.component';
+import { TeamPageComponent } from './features/dashboard/team-page.component';
+import { SettingsPageComponent } from './features/dashboard/settings-page.component';
+import { RecordsPageComponent } from './features/dashboard/records-page.component';
 
 export const routes: Routes = [
   { path: '', component: LandingPageComponent },
@@ -24,11 +27,11 @@ export const routes: Routes = [
       { path: '', component: DashboardHomeComponent },
       { path: 'sites', component: SitesPageComponent },
       { path: 'incidents', component: IncidentsPageComponent },
-      { path: 'records', component: IncidentsPageComponent },
+      { path: 'records', component: RecordsPageComponent },
       { path: 'api-keys', component: ApiKeysPageComponent },
       { path: 'platform', component: PlatformPageComponent },
-      { path: 'team', component: DashboardHomeComponent },
-      { path: 'settings', component: DashboardHomeComponent },
+      { path: 'team', component: TeamPageComponent },
+      { path: 'settings', component: SettingsPageComponent },
     ],
   },
   { path: '**', redirectTo: '' },

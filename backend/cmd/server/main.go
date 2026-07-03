@@ -58,12 +58,19 @@ func main() {
 	integritySvc := services.NewIntegrityService(tenantResolver, fabricClient)
 	siteSvc := services.NewSiteService(tenantResolver)
 	apiKeySvc := services.NewAPIKeyService(tenantResolver)
+	teamSvc := services.NewTeamService(tenantResolver)
+	notificationSvc := services.NewNotificationService(tenantResolver)
+	attributionSvc := services.NewAttributionService(tenantResolver)
 	platformSvc := services.NewPlatformService(platformDB)
 
 	authHandler := handlers.NewAuthHandler(authSvc)
 	integrityHandler := handlers.NewIntegrityHandler(integritySvc, platformDB)
 	siteHandler := handlers.NewSiteHandler(siteSvc, platformDB)
 	apiKeyHandler := handlers.NewAPIKeyHandler(apiKeySvc, platformDB)
+	teamHandler := handlers.NewTeamHandler(teamSvc, platformDB)
+	notificationHandler := handlers.NewNotificationHandler(notificationSvc, platformDB)
+	attributionHandler := handlers.NewAttributionHandler(attributionSvc, platformDB)
+	proxyHandler := handlers.NewProxyHandler(siteSvc, platformDB)
 	platformHandler := handlers.NewPlatformHandler(platformSvc)
 
 	if cfg.Env == "production" {
@@ -80,13 +87,18 @@ func main() {
 		MaxAge:           12 * time.Hour,
 	}))
 
+	r.Use(middleware.SecurityHeaders())
+	r.Use(middleware.RateLimit(120, time.Minute))
+
 	r.GET("/health", platformHandler.Health)
 	r.GET("/api/v1/plans", platformHandler.ListPlans)
 
 	api := r.Group("/api/v1")
 	{
-		api.POST("/auth/register", authHandler.Register)
-		api.POST("/auth/login", authHandler.Login)
+		authRoutes := api.Group("")
+		authRoutes.Use(middleware.RateLimit(20, time.Minute))
+		authRoutes.POST("/auth/register", authHandler.Register)
+		authRoutes.POST("/auth/login", authHandler.Login)
 
 		protected := api.Group("")
 		protected.Use(middleware.JWTAuth(jwtSvc))
@@ -101,13 +113,30 @@ func main() {
 
 			protected.GET("/sites", siteHandler.List)
 			protected.POST("/sites", siteHandler.Create)
+			protected.GET("/sites/:id", siteHandler.Get)
+			protected.PUT("/sites/:id", siteHandler.Update)
+			protected.DELETE("/sites/:id", siteHandler.Delete)
 			protected.POST("/sites/:id/discover", siteHandler.Discover)
 			protected.GET("/sites/:id/endpoints", siteHandler.ListEndpoints)
+			protected.POST("/sites/:id/endpoints", siteHandler.AddEndpoint)
 			protected.PATCH("/sites/:id/endpoints/:epId", siteHandler.ToggleEndpoint)
+			protected.DELETE("/sites/:id/endpoints/:epId", siteHandler.DeleteEndpoint)
+			protected.Any("/proxy/:id/*path", proxyHandler.Forward)
 
 			protected.GET("/api-keys", apiKeyHandler.List)
 			protected.POST("/api-keys", apiKeyHandler.Create)
 			protected.DELETE("/api-keys/:id", apiKeyHandler.Revoke)
+
+			protected.GET("/team/users", teamHandler.ListUsers)
+			protected.POST("/team/users", teamHandler.CreateUser)
+			protected.PATCH("/team/users/:id", teamHandler.UpdateUser)
+			protected.GET("/team/roles", teamHandler.ListRoles)
+
+			protected.GET("/notifications/channels", notificationHandler.List)
+			protected.POST("/notifications/channels", notificationHandler.Upsert)
+			protected.DELETE("/notifications/channels/:id", notificationHandler.Delete)
+
+			protected.POST("/tampering/:id/investigate", attributionHandler.Investigate)
 
 			admin := protected.Group("/platform")
 			admin.Use(middleware.RequireRole("super_admin"))

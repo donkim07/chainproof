@@ -123,17 +123,77 @@ func (h *SiteHandler) Create(c *gin.Context) {
 	if !ok {
 		return
 	}
-	var site models.Site
-	if err := c.ShouldBindJSON(&site); err != nil {
+	var req models.SiteUpsertRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	created, err := h.sites.Create(c.Request.Context(), slug, site)
+	created, err := h.sites.Create(c.Request.Context(), slug, models.Site{
+		Name: req.Name, BaseURL: req.BaseURL, IntegrationMode: req.IntegrationMode, DBType: req.DBType,
+	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusCreated, created)
+}
+
+func (h *SiteHandler) Get(c *gin.Context) {
+	slug, ok := requireOrgSlug(c, h.platform)
+	if !ok {
+		return
+	}
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid site id"})
+		return
+	}
+	site, err := h.sites.Get(c.Request.Context(), slug, id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "site not found"})
+		return
+	}
+	c.JSON(http.StatusOK, site)
+}
+
+func (h *SiteHandler) Update(c *gin.Context) {
+	slug, ok := requireOrgSlug(c, h.platform)
+	if !ok {
+		return
+	}
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid site id"})
+		return
+	}
+	var req models.SiteUpsertRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	site, err := h.sites.Update(c.Request.Context(), slug, id, req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, site)
+}
+
+func (h *SiteHandler) Delete(c *gin.Context) {
+	slug, ok := requireOrgSlug(c, h.platform)
+	if !ok {
+		return
+	}
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid site id"})
+		return
+	}
+	if err := h.sites.Delete(c.Request.Context(), slug, id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
 func (h *SiteHandler) List(c *gin.Context) {
@@ -215,6 +275,49 @@ func (h *SiteHandler) ToggleEndpoint(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
+func (h *SiteHandler) AddEndpoint(c *gin.Context) {
+	slug, ok := requireOrgSlug(c, h.platform)
+	if !ok {
+		return
+	}
+	siteID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid site id"})
+		return
+	}
+	var body struct {
+		Method      string `json:"method" binding:"required"`
+		PathPattern string `json:"path_pattern" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	ep, err := h.sites.AddEndpoint(c.Request.Context(), slug, siteID, body.Method, body.PathPattern)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, ep)
+}
+
+func (h *SiteHandler) DeleteEndpoint(c *gin.Context) {
+	slug, ok := requireOrgSlug(c, h.platform)
+	if !ok {
+		return
+	}
+	epID, err := uuid.Parse(c.Param("epId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid endpoint id"})
+		return
+	}
+	if err := h.sites.DeleteEndpoint(c.Request.Context(), slug, epID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
 type APIKeyHandler struct {
 	keys     *services.APIKeyService
 	platform *database.PlatformDB
@@ -238,7 +341,7 @@ func (h *APIKeyHandler) Create(c *gin.Context) {
 		return
 	}
 	claims := middleware.GetClaims(c)
-	key, err := h.keys.Create(c.Request.Context(), slug, body.Name, body.Scopes, claims.UserID)
+	key, err := h.keys.Create(c.Request.Context(), slug, body.Name, body.Scopes, claims.Email)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

@@ -21,8 +21,13 @@ func NewAPIKeyService(t *tenant.Resolver) *APIKeyService {
 	return &APIKeyService{tenant: t}
 }
 
-func (s *APIKeyService) Create(ctx context.Context, orgSlug, name string, scopes []string, userID uuid.UUID) (*models.APIKey, error) {
+func (s *APIKeyService) Create(ctx context.Context, orgSlug, name string, scopes []string, creatorEmail string) (*models.APIKey, error) {
 	pool, _, err := s.tenant.GetPool(ctx, orgSlug)
+	if err != nil {
+		return nil, err
+	}
+
+	tenantUserID, err := s.tenant.ResolveTenantUserID(ctx, orgSlug, creatorEmail)
 	if err != nil {
 		return nil, err
 	}
@@ -41,10 +46,15 @@ func (s *APIKeyService) Create(ctx context.Context, orgSlug, name string, scopes
 		Scopes: scopes, Active: true, CreatedAt: time.Now(), PlainKey: plainKey,
 	}
 
+	var createdBy interface{}
+	if tenantUserID != nil {
+		createdBy = *tenantUserID
+	}
+
 	_, err = pool.Exec(ctx, `
 		INSERT INTO api_keys (id, name, key_prefix, key_hash, scopes, created_by)
 		VALUES ($1, $2, $3, $4, $5, $6)`,
-		key.ID, key.Name, key.KeyPrefix, keyHash, scopes, userID)
+		key.ID, key.Name, key.KeyPrefix, keyHash, scopes, createdBy)
 	if err != nil {
 		return nil, err
 	}
