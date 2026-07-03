@@ -1,0 +1,130 @@
+Organizations:
+  - &OrdererOrg
+    Name: OrdererMSP
+    ID: OrdererMSP
+    MSPDir: ../organizations/ordererOrganizations/chainproof.local/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('OrdererMSP.member')"
+      Writers:
+        Type: Signature
+        Rule: "OR('OrdererMSP.member')"
+      Admins:
+        Type: Signature
+        Rule: "OR('OrdererMSP.admin')"
+
+  - &ChainProofOrg
+    Name: ChainProofMSP
+    ID: ChainProofMSP
+    MSPDir: ../organizations/peerOrganizations/chainproof.local/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('ChainProofMSP.admin', 'ChainProofMSP.peer', 'ChainProofMSP.client')"
+      Writers:
+        Type: Signature
+        Rule: "OR('ChainProofMSP.admin', 'ChainProofMSP.client')"
+      Admins:
+        Type: Signature
+        Rule: "OR('ChainProofMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('ChainProofMSP.peer')"
+    AnchorPeers:
+      - Host: peer0.chainproof.local
+        Port: 7051
+
+Capabilities:
+  Channel: &ChannelCapabilities
+    V2_0: true
+  Orderer: &OrdererCapabilities
+    V2_0: true
+  Application: &ApplicationCapabilities
+    V2_5: true
+
+Application: &ApplicationDefaults
+  Policies:
+    LifecycleEndorsement:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Endorsement"
+    Endorsement:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Endorsement"
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+  Capabilities:
+    <<: *ApplicationCapabilities
+
+Orderer: &OrdererDefaults
+  OrdererType: etcdraft
+  Addresses:
+    - orderer0.chainproof.local:7050
+  EtcdRaft:
+    Consenters:
+      - Host: orderer0.chainproof.local
+        Port: 7050
+        ClientTLSCert: ../organizations/ordererOrganizations/chainproof.local/orderers/orderer0.chainproof.local/tls/server.crt
+        ServerTLSCert: ../organizations/ordererOrganizations/chainproof.local/orderers/orderer0.chainproof.local/tls/server.crt
+  BatchTimeout: 2s
+  BatchSize:
+    MaxMessageCount: 500
+    AbsoluteMaxBytes: 99 MB
+    PreferredMaxBytes: 2 MB
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+    BlockValidation:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+  Organizations:
+    - *OrdererOrg
+  Capabilities:
+    <<: *OrdererCapabilities
+
+Channel: &ChannelDefaults
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Readers"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Writers"
+    Admins:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+  Capabilities:
+    <<: *ChannelCapabilities
+
+Profiles:
+  ChainProofGenesis:
+    <<: *ChannelDefaults
+    Orderer:
+      <<: *OrdererDefaults
+    Consortiums:
+      ChainProofConsortium:
+        Organizations:
+          - *ChainProofOrg
+
+  ChainProofChannel:
+    <<: *ChannelDefaults
+    Orderer:
+      <<: *OrdererDefaults
+    Application:
+      <<: *ApplicationDefaults
+      Organizations:
+        - *ChainProofOrg

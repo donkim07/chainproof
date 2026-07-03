@@ -52,7 +52,7 @@ services:
       - COUCHDB_USER=admin
       - COUCHDB_PASSWORD=adminpw
     ports:
-      - "6984:5984"
+      - "7184:5984"
     volumes:
       - couchdb_chainproof_data:/opt/couchdb/data
     healthcheck:
@@ -91,7 +91,7 @@ services:
       - "7150:7050"
       - "7153:7053"
     volumes:
-      - ./blockchain/fabric/crypto/orderer:/var/hyperledger/orderer
+      - ./blockchain/fabric/organizations/ordererOrganizations/chainproof.local/orderers/orderer0.chainproof.local:/var/hyperledger/orderer
       - orderer0_data:/var/hyperledger/production/orderer
     networks: [chainproof_net]
     profiles: [fabric]
@@ -125,23 +125,11 @@ services:
       - "7151:7051"
       - "7152:7052"
     volumes:
-      - ./blockchain/fabric/crypto/peer:/var/hyperledger/peer
+      - ./blockchain/fabric/organizations/peerOrganizations/chainproof.local/peers/peer0.chainproof.local:/var/hyperledger/peer
       - peer0_chainproof_data:/var/hyperledger/production
     depends_on:
       couchdb.chainproof.local:
         condition: service_healthy
-    networks: [chainproof_net]
-    profiles: [fabric]
-
-  ccaas.chainproof-integrity:
-    image: chainproof-chaincode:latest
-    container_name: ccaas.chainproof-integrity
-    environment:
-      - CHAINCODE_SERVER_ADDRESS=0.0.0.0:9999
-      - CHAINCODE_ID=chainproof-integrity_1.0
-      - CORE_CHAINCODE_ID_NAME=chainproof-integrity_1.0
-    ports:
-      - "9999:9999"
     networks: [chainproof_net]
     profiles: [fabric]
 
@@ -153,15 +141,15 @@ services:
       - API_KEY=chainproof-dev-key
       - FABRIC_PEER_ENDPOINT=peer0.chainproof.local:7051
       - FABRIC_PEER_HOST_ALIAS=peer0.chainproof.local
-      - FABRIC_TLS_CERT_PATH=/crypto/peer/tls/ca.crt
-      - FABRIC_ID_CERT_PATH=/crypto/user/chainproof-admin/chainproof-admin/msp/signcerts/cert.pem
-      - FABRIC_ID_KEY_PATH=/crypto/user/chainproof-admin/chainproof-admin/msp/keystore/key.pem
+      - FABRIC_TLS_CERT_PATH=/crypto/peerOrganizations/chainproof.local/peers/peer0.chainproof.local/tls/ca.crt
+      - FABRIC_ID_CERT_PATH=/crypto/peerOrganizations/chainproof.local/users/Admin@chainproof.local/msp/signcerts/Admin@chainproof.local-cert.pem
+      - FABRIC_ID_KEY_PATH=/crypto/peerOrganizations/chainproof.local/users/Admin@chainproof.local/msp/keystore/priv_sk
       - FABRIC_MSP_ID=ChainProofMSP
       - FABRIC_CHANNEL=chainproof-channel
       - FABRIC_CHAINCODE=chainproof-integrity
     ports:
-      - "8090:8090"
+      - "8091:8090"
     volumes:
-      - ./blockchain/fabric/crypto:/crypto:ro
+      - ./blockchain/fabric/organizations:/crypto:ro
     networks: [chainproof_net]
     profiles: [fabric]

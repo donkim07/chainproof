@@ -2,8 +2,11 @@
   "name": "chainproof-integrity-chaincode",
   "version": "1.0.0",
   "main": "index.js",
+  "scripts": {
+    "start": "fabric-chaincode-node start"
+  },
   "dependencies": {
-    "fabric-contract-api": "^2.5.4",
-    "fabric-shim": "^2.5.4"
+    "fabric-contract-api": "^2.5.8",
+    "fabric-shim": "^2.5.8"
   }
 }

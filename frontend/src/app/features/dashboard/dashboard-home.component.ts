@@ -20,8 +20,8 @@ interface Stats {
   template: `
     <app-page-header
       title="Integrity Overview"
-      subtitle="Real-time snapshot of your protected backends and blockchain anchors."
-      badge="Dashboard">
+      subtitle="Monitor tamper protection for your sites — your end users never log in here."
+      badge="Owner dashboard">
     </app-page-header>
 
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
@@ -59,12 +59,12 @@ interface Stats {
           <h2 class="mb-4 text-lg font-semibold text-white">Integration Modes</h2>
           <div class="space-y-3">
             <div class="rounded-xl border border-brand-500/20 bg-brand-500/5 p-4">
-              <div class="font-medium text-brand-300">Developer API</div>
-              <p class="mt-1 text-sm text-slate-400">REST + API keys. Full control for engineering teams.</p>
+              <div class="font-medium text-brand-300">Developer API (recommended)</div>
+              <p class="mt-1 text-sm text-slate-400">Call /integrity/anchor from your backend after each user record save.</p>
             </div>
             <div class="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
-              <div class="font-medium text-emerald-300">Proxy Mode</div>
-              <p class="mt-1 text-sm text-slate-400">URL in, endpoints discovered, payloads captured silently.</p>
+              <div class="font-medium text-emerald-300">Proxy / polling (advanced)</div>
+              <p class="mt-1 text-sm text-slate-400">Optional — route traffic or probe with one service API key, not user passwords.</p>
             </div>
           </div>
         </div>
@@ -85,10 +85,10 @@ interface Stats {
 export class DashboardHomeComponent implements OnInit {
   stats: Stats | null = null;
   checklist = [
-    { step: '1', title: 'Add your first site', desc: 'Connect a backend URL and pick API or Proxy mode.', link: '/dashboard/sites' },
-    { step: '2', title: 'Discover & protect endpoints', desc: 'Run OpenAPI/wordlist discovery or add routes manually.', link: '/dashboard/sites' },
-    { step: '3', title: 'Create an API key', desc: 'Generate scoped keys for programmatic anchoring.', link: '/dashboard/api-keys' },
-    { step: '4', title: 'Configure alert webhooks', desc: 'Get notified when tampering is detected.', link: '/dashboard/settings' },
+    { step: '1', title: 'Register your site', desc: 'Add your backend URL — Developer API is the recommended path.', link: '/dashboard/sites' },
+    { step: '2', title: 'Discover & protect endpoints', desc: 'Scan for routes; enable protection on user-facing endpoints.', link: '/dashboard/sites' },
+    { step: '3', title: 'Create an API key', desc: 'Your server uses this to call /integrity/anchor after saves.', link: '/dashboard/api-keys' },
+    { step: '4', title: 'Read the owner docs', desc: 'Copy-paste examples for Go, Node, Python, PHP, Java, cURL.', link: '/docs' },
   ];
 
   constructor(private api: ApiService) {}

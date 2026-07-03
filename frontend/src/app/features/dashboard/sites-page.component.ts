@@ -7,7 +7,6 @@ import { ToastService } from '../../core/services/toast.service';
 import { ButtonComponent } from '../../shared/components/button/button.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { StatCardComponent } from '../../shared/components/stat-card/stat-card.component';
-import { CopyButtonComponent } from '../../shared/components/copy-button/copy-button.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 
 interface Site {
@@ -57,12 +56,12 @@ interface SiteAuth {
 @Component({
   selector: 'app-sites-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, ButtonComponent, PageHeaderComponent, StatCardComponent, EmptyStateComponent, CopyButtonComponent],
+  imports: [CommonModule, FormsModule, RouterLink, ButtonComponent, PageHeaderComponent, StatCardComponent, EmptyStateComponent],
   template: `
     <app-page-header
       title="Sites & Endpoints"
-      subtitle="Register backends, run multi-source discovery, and choose which routes to protect."
-      badge="Protection">
+      subtitle="Register your backends and choose which user-facing routes get tamper protection."
+      badge="Owner dashboard">
       <app-button actions (click)="openCreate()">+ Add Site</app-button>
     </app-page-header>
 
@@ -87,8 +86,8 @@ interface SiteAuth {
           <div>
             <label class="mb-1 block text-sm text-slate-400">Integration Mode</label>
             <select class="input-field" [(ngModel)]="newSite.integration_mode" name="mode">
-              <option value="proxy">Proxy — auto-discover & capture</option>
-              <option value="api">Developer API — manual anchor</option>
+              <option value="api">Developer API — anchor from your backend (recommended)</option>
+              <option value="proxy">Proxy — advanced auto-capture</option>
             </select>
           </div>
           <div class="flex items-end gap-2">
@@ -168,67 +167,52 @@ interface SiteAuth {
             </div>
           }
 
-          <div class="card border-emerald-500/20">
-            <h3 class="font-semibold text-white mb-1">Backend Authentication</h3>
-            <p class="text-xs text-slate-400 mb-4">Required for protected endpoints like <code class="text-brand-300">/api/ask</code>. ChainProof uses these credentials when polling or proxying.</p>
+          <div class="card border-brand-500/20">
+            <h3 class="font-semibold text-white mb-1">How to protect your users' records</h3>
+            <p class="text-xs text-slate-400 mb-4 leading-relaxed">
+              Your website users never log into ChainProof. Choose an integration:
+              <strong class="text-white">Developer API</strong> (recommended — anchor in your backend after each save)
+              or <strong class="text-white">Proxy/polling</strong> (advanced — one service API key on your backend, not user passwords).
+            </p>
+            <div class="grid gap-3 md:grid-cols-2 mb-4 text-xs">
+              <a routerLink="/docs" class="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 hover:border-emerald-500/50">
+                <div class="font-medium text-emerald-300">Developer API</div>
+                <p class="text-slate-500 mt-1">Your server calls /integrity/anchor when user data is saved.</p>
+              </a>
+              <div class="rounded-lg border border-slate-700 p-3">
+                <div class="font-medium text-slate-300">Polling (optional)</div>
+                <p class="text-slate-500 mt-1">One machine API key so ChainProof can probe endpoints — not 100k user logins.</p>
+              </div>
+            </div>
+            <h4 class="text-xs font-medium text-slate-400 mb-2">Service API credential (polling only — optional)</h4>
             <div class="grid gap-3 md:grid-cols-2">
               <div>
-                <label class="text-xs text-slate-400">Auth type</label>
-                <select class="input-field mt-1" [(ngModel)]="authForm.auth_type">
-                  <option value="none">None</option>
-                  <option value="bearer">Bearer token</option>
-                  <option value="api_key">API key header</option>
+                <label class="text-xs text-slate-500">Auth type</label>
+                <select class="input-field mt-1 text-sm" [(ngModel)]="authForm.auth_type">
+                  <option value="none">None (public endpoints)</option>
+                  <option value="api_key">API key header (recommended)</option>
+                  <option value="bearer">Service bearer token</option>
                   <option value="basic">Basic auth</option>
                 </select>
               </div>
               @if (authForm.auth_type === 'bearer') {
                 <div>
-                  <label class="text-xs text-slate-400">Bearer token</label>
-                  <input class="input-field mt-1 font-mono" [(ngModel)]="authForm.bearer_token" [placeholder]="auth?.bearer_token_set ? 'Saved (enter to replace)' : 'eyJ...'" />
+                  <label class="text-xs text-slate-500">Service token (long-lived, from YOUR backend)</label>
+                  <input class="input-field mt-1 font-mono text-sm" [(ngModel)]="authForm.bearer_token" placeholder="Create on your API — not user JWTs" />
                 </div>
               }
               @if (authForm.auth_type === 'api_key') {
-                <div><label class="text-xs text-slate-400">Header name</label><input class="input-field mt-1" [(ngModel)]="authForm.api_key_header" placeholder="X-API-Key" /></div>
-                <div><label class="text-xs text-slate-400">API key value</label><input class="input-field mt-1 font-mono" [(ngModel)]="authForm.api_key_value" /></div>
+                <div><label class="text-xs text-slate-500">Header</label><input class="input-field mt-1 text-sm" [(ngModel)]="authForm.api_key_header" placeholder="X-Monitor-Key" /></div>
+                <div><label class="text-xs text-slate-500">Key value</label><input class="input-field mt-1 font-mono text-sm" [(ngModel)]="authForm.api_key_value" /></div>
               }
-              <div class="md:col-span-2 border-t border-slate-800 pt-3 mt-1">
-                <div class="text-xs font-medium text-amber-300 mb-2">JWT expiring? Auto-refresh (optional)</div>
-                <p class="text-xs text-slate-500 mb-3">If your API uses short-lived JWTs, add your login endpoint — ChainProof re-authenticates on 401. Better: use a long-lived API key for polling.</p>
-                <div class="grid gap-3 md:grid-cols-3">
-                  <input class="input-field text-xs" [(ngModel)]="authForm.login_url" placeholder="Login URL e.g. https://api.../auth/login" />
-                  <input class="input-field text-xs" [(ngModel)]="authForm.login_email" placeholder="Service account email" />
-                  <input class="input-field text-xs" type="password" [(ngModel)]="authForm.login_password" placeholder="Password" />
-                </div>
-              </div>
               <div class="md:col-span-2 flex flex-wrap items-center gap-4">
                 <label class="inline-flex items-center gap-2 text-sm text-slate-300">
-                  <input type="checkbox" [(ngModel)]="authForm.poll_enabled" /> Enable polling (auto-anchor every {{ authForm.poll_interval_minutes || 5 }} min)
+                  <input type="checkbox" [(ngModel)]="authForm.poll_enabled" /> Enable scheduled polling
                 </label>
-                <app-button (click)="saveAuth()">Save Auth</app-button>
+                <app-button (click)="saveAuth()">Save</app-button>
               </div>
             </div>
-            <div class="mt-4 rounded-lg bg-slate-950/80 border border-slate-800 p-3 text-xs flex items-start justify-between gap-2">
-              <div>
-                <div class="text-slate-500 mb-1">Proxy URL (requires ChainProof JWT — see Docs):</div>
-                <code class="text-emerald-400 break-all">{{ proxyUrl }}</code>
-              </div>
-              <app-copy-button [value]="proxyUrl" label="Copy proxy URL" />
-            </div>
-            <div class="mt-3 grid gap-2 md:grid-cols-2">
-              <div>
-                <label class="text-xs text-slate-400">Sample POST body for /api/ask (polling)</label>
-                <textarea class="input-field mt-1 font-mono text-xs h-20" [(ngModel)]="sampleBodyAsk"></textarea>
-              </div>
-              <div class="flex flex-col justify-end gap-2">
-                <app-button variant="secondary" (click)="testAndAnchor()" [loading]="testing">Test &amp; Anchor /api/ask</app-button>
-                @if (testResult) {
-                  <div class="text-xs rounded-lg p-2" [class]="testResult.anchored ? 'bg-emerald-500/10 text-emerald-300' : 'bg-amber-500/10 text-amber-200'">
-                    HTTP {{ testResult.status_code }} — {{ testResult.message || (testResult.anchored ? 'Anchored' : 'Not anchored') }}
-                  </div>
-                }
-              </div>
-            </div>
-            <p class="mt-3 text-xs text-amber-200/80">Direct visits to your website are NOT monitored. Use proxy URL, polling with auth, or Developer API.</p>
+            <p class="mt-3 text-xs text-slate-500">For authenticated user traffic, use Developer API in your backend — see Docs.</p>
           </div>
 
           <div class="card">
@@ -309,7 +293,7 @@ export class SitesPageComponent implements OnInit {
   lastDiscovery = '—';
   manualMethod = 'GET';
   manualPath = '';
-  newSite = { name: '', base_url: '', integration_mode: 'proxy' };
+  newSite = { name: '', base_url: '', integration_mode: 'api' };
   auth: SiteAuth | null = null;
   authForm: SiteAuth = { auth_type: 'none', poll_enabled: true, poll_interval_minutes: 5, api_key_header: 'X-API-Key' };
   sampleBodyAsk = '{"question":"hi","session_id":"test-session-001"}';
@@ -353,7 +337,7 @@ export class SitesPageComponent implements OnInit {
   openCreate() {
     this.showForm = true;
     this.editingId = '';
-    this.newSite = { name: '', base_url: '', integration_mode: 'proxy' };
+    this.newSite = { name: '', base_url: '', integration_mode: 'api' };
   }
 
   cancelForm() {
@@ -368,7 +352,7 @@ export class SitesPageComponent implements OnInit {
     this.api.get<Endpoint[]>(`/api/v1/sites/${site.id}/endpoints`).subscribe(e => (this.endpoints = e));
     this.api.get<SiteAuth>(`/api/v1/sites/${site.id}/auth`).subscribe(a => {
       this.auth = a;
-      this.authForm = { ...this.authForm, auth_type: a.auth_type || 'none', poll_enabled: a.poll_enabled, poll_interval_minutes: a.poll_interval_minutes || 5, api_key_header: a.api_key_header || 'X-API-Key', login_url: a.login_url || '', login_email: a.login_email || '' };
+      this.authForm = { ...this.authForm, auth_type: a.auth_type || 'none', poll_enabled: a.poll_enabled, poll_interval_minutes: a.poll_interval_minutes || 5, api_key_header: a.api_key_header || 'X-Monitor-Key' };
       if (a.sample_bodies?.['/api/ask']) this.sampleBodyAsk = a.sample_bodies['/api/ask'];
     });
   }
@@ -459,9 +443,6 @@ export class SitesPageComponent implements OnInit {
     if (this.authForm.bearer_token) payload['bearer_token'] = this.authForm.bearer_token;
     if (this.authForm.api_key_header) payload['api_key_header'] = this.authForm.api_key_header;
     if (this.authForm.api_key_value) payload['api_key_value'] = this.authForm.api_key_value;
-    if (this.authForm.login_url) payload['login_url'] = this.authForm.login_url;
-    if (this.authForm.login_email) payload['login_email'] = this.authForm.login_email;
-    if (this.authForm.login_password) payload['login_password'] = this.authForm.login_password;
     this.api.put(`/api/v1/sites/${this.selectedSite.id}/auth`, payload).subscribe({
       next: () => { this.toast.success('Auth saved'); this.selectSite(this.selectedSite!); },
       error: e => this.toast.error(e.error?.error || 'Failed'),

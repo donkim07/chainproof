@@ -1,0 +1,15 @@
+OrdererOrgs:
+  - Name: Orderer
+    Domain: chainproof.local
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+
+PeerOrgs:
+  - Name: ChainProof
+    Domain: chainproof.local
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+    Users:
+      Count: 1
