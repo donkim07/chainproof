@@ -107,8 +107,6 @@ func main() {
 			protected.GET("/dashboard/stats", integrityHandler.DashboardStats)
 			protected.GET("/dashboard/analytics", siteHandler.Analytics)
 
-			protected.POST("/integrity/anchor", integrityHandler.Anchor)
-			protected.POST("/integrity/verify", integrityHandler.Verify)
 			protected.GET("/integrity/records", integrityHandler.ListRecords)
 			protected.GET("/tampering", integrityHandler.ListIncidents)
 
@@ -153,6 +151,18 @@ func main() {
 				admin.GET("/audit-logs", platformHandler.ListAuditLogs)
 				admin.GET("/plans", platformHandler.ListPlansAdmin)
 			}
+		}
+
+		// Programmatic integrity API — JWT or long-lived API key (cp_...)
+		integrityAPI := api.Group("")
+		integrityAPI.Use(middleware.JWTOrAPIKeyAuth(jwtSvc, apiKeySvc, platformDB))
+		{
+			integrityAPI.POST("/integrity/anchor",
+				middleware.RequireAPIScope("integrity:anchor"),
+				integrityHandler.Anchor)
+			integrityAPI.POST("/integrity/verify",
+				middleware.RequireAPIScope("integrity:verify"),
+				integrityHandler.Verify)
 		}
 	}
 

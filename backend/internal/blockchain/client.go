@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -93,9 +94,16 @@ func (c *Client) mockAnchor(payload AnchorPayload) *AnchorResult {
 	return &AnchorResult{Success: true, TxID: txID, Mock: true}
 }
 
-func (c *Client) Verify(ctx context.Context, entityType, entityUID, recordHash string) (bool, string, error) {
-	url := fmt.Sprintf("%s/api/v1/anchors/integrity/verify?entityType=%s&entityUid=%s&recordHash=%s",
-		c.baseURL, entityType, entityUID, recordHash)
+func (c *Client) Verify(ctx context.Context, tenantID, entityType, entityUID, recordHash string) (bool, string, error) {
+	base := fmt.Sprintf("%s/api/v1/anchors/integrity/verify", c.baseURL)
+	q := url.Values{}
+	if tenantID != "" {
+		q.Set("tenantId", tenantID)
+	}
+	q.Set("entityType", entityType)
+	q.Set("entityUid", entityUID)
+	q.Set("recordHash", recordHash)
+	url := base + "?" + q.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return false, "", err
@@ -107,7 +115,7 @@ func (c *Client) Verify(ctx context.Context, entityType, entityUID, recordHash s
 	resp, err := c.client.Do(req)
 	if err != nil {
 		if c.devMock {
-			return strings.HasPrefix(recordHash, ""), "dev-mock-verify", nil
+			return true, "dev-mock-verify", nil
 		}
 		return false, "", err
 	}

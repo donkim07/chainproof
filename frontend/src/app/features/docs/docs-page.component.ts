@@ -63,7 +63,8 @@ import { environment } from '../../../environments/environment';
           </p>
 
           <h2 class="mt-8 text-lg font-semibold text-white">Step 1 — Owner account &amp; API access</h2>
-          <p class="text-sm text-slate-400 mt-2">Register your organization → Dashboard → API Keys (or use JWT from login).</p>
+          <p class="text-sm text-slate-400 mt-2">Dashboard → <strong class="text-white">API Keys</strong> → generate a key. Copy it once into your backend <code class="text-brand-300">.env</code> — it is never shown again (only a prefix remains in the panel).</p>
+          <app-code-block title="Anchor with API key (recommended for backends)" [code]="anchorWithApiKey" />
 
           <h2 class="mt-6 text-lg font-semibold text-white">Step 2 — Anchor request body</h2>
           <app-code-block title="POST /api/v1/integrity/anchor" [code]="anchorUserRecord" />
@@ -174,7 +175,23 @@ export class DocsPageComponent {
   }
 }`;
 
-  curlFull = `# 1. Owner logs in (NOT end users)
+  anchorWithApiKey = `# Store in YOUR server .env — never in frontend or git
+CHAINPROOF_API_KEY=cp_your_key_from_dashboard
+
+curl -X POST ${environment.apiUrl}/api/v1/integrity/anchor \\
+  -H "X-API-Key: $CHAINPROOF_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "entity_type": "chat_message",
+    "entity_id": "29f939fd-2c7b-4029-9fc3-fef9f738bda7",
+    "payload": {
+      "session_id": "29f939fd-2c7b-4029-9fc3-fef9f738bda7",
+      "question": "hi",
+      "answer": "Hello!"
+    }
+  }'`;
+
+  curlFull = `# Alternative: owner JWT from login (expires in 24h)
 curl -s -X POST ${environment.apiUrl}/api/v1/auth/login \\
   -H "Content-Type: application/json" \\
   -d '{"email":"owner@mycompany.com","password":"yourpassword"}' | jq .

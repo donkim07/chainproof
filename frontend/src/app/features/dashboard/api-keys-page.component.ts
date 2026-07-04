@@ -25,7 +25,7 @@ interface APIKey {
       <div class="flex items-center justify-between">
         <div>
           <h1 class="text-2xl font-bold text-white">API Keys</h1>
-          <p class="text-slate-400">Manage keys for programmatic access.</p>
+          <p class="text-slate-400">Server-side keys for anchoring from your backend. Full keys are shown <strong class="text-white">once</strong> at creation — they are never stored or displayed again in this panel.</p>
         </div>
         <app-button (click)="showCreate = true">+ New Key</app-button>
       </div>
@@ -33,10 +33,13 @@ interface APIKey {
       @if (newKey) {
         <div class="card border-emerald-500/30 animate-slide-up">
           <div class="flex items-center justify-between mb-2">
-            <div class="badge-success">Key Created — copy now, it won't be shown again</div>
+            <div class="badge-success">Key created — copy now and store in your server .env only</div>
             <app-copy-button [value]="newKey" label="Copy API key" />
           </div>
+          <p class="text-xs text-slate-400 mb-2">This key will <strong class="text-amber-300">not</strong> appear again in the dashboard. Only the prefix is shown later. Revoke immediately if leaked.</p>
           <code class="block rounded bg-slate-950 p-3 font-mono text-sm text-emerald-400 break-all">{{ newKey }}</code>
+          <pre class="mt-3 text-xs text-slate-500 whitespace-pre-wrap"># .env on YOUR backend (never commit to git)
+CHAINPROOF_API_KEY={{ newKey }}</pre>
         </div>
       }
 

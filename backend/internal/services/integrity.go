@@ -11,6 +11,7 @@ import (
 	"github.com/chainproof/baas/internal/models"
 	"github.com/chainproof/baas/internal/tenant"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type IntegrityService struct {
@@ -144,11 +145,7 @@ func (s *IntegrityService) Verify(ctx context.Context, orgSlug string, req model
 		resp.Message = "Record integrity verified — no tampering detected"
 	} else {
 		resp.Message = "TAMPERING DETECTED — payload hash mismatch"
-		_, _ = pool.Exec(ctx, `
-			INSERT INTO tamper_incidents
-			(entity_type, entity_id, severity, expected_hash, actual_hash, blockchain_tx_id)
-			VALUES ($1, $2, 'high', $3, $4, NULLIF($5,''))`,
-			req.EntityType, req.EntityID, expectedHash, actualHash, txID)
+		_ = s.recordTamperIncident(ctx, pool, req.EntityType, req.EntityID, expectedHash, &actualHash, txID, "high")
 	}
 
 	return resp, nil
@@ -217,22 +214,43 @@ func (s *IntegrityService) RunMonitor(ctx context.Context, orgSlug string) (int,
 	}
 	defer rows.Close()
 
-	tampered := 0
+	missingOnChain := 0
 	for rows.Next() {
 		var entityType, entityID, payloadHash, recordHash, txID string
 		if err := rows.Scan(&entityType, &entityID, &payloadHash, &recordHash, &txID); err != nil {
 			continue
 		}
-		found, _, _ := s.fabric.Verify(ctx, entityType, entityID, recordHash)
-		if !found {
-			tampered++
-			_, _ = pool.Exec(ctx, `
-				INSERT INTO tamper_incidents (entity_type, entity_id, severity, expected_hash, blockchain_tx_id)
-				VALUES ($1, $2, 'critical', $3, NULLIF($4,''))
-				ON CONFLICT DO NOTHING`, entityType, entityID, recordHash, txID)
+		found, _, err := s.fabric.Verify(ctx, orgSlug, entityType, entityID, recordHash)
+		if err != nil || found {
+			continue
 		}
+		missingOnChain++
 	}
-	return tampered, nil
+	// Blockchain reconciliation only — do not create tamper_incidents here.
+	// DB tampering is detected exclusively via Verify() when payload hash mismatches.
+	return missingOnChain, nil
+}
+
+// recordTamperIncident inserts one open incident per entity/hash mismatch (no duplicates).
+func (s *IntegrityService) recordTamperIncident(ctx context.Context, pool *pgxpool.Pool, entityType, entityID, expectedHash string, actualHash *string, txID, severity string) error {
+	var exists bool
+	err := pool.QueryRow(ctx, `
+		SELECT EXISTS(
+			SELECT 1 FROM tamper_incidents
+			WHERE entity_type = $1 AND entity_id = $2
+			  AND investigation_status = 'open'
+			  AND expected_hash = $3
+			  AND COALESCE(actual_hash, '') = COALESCE($4, '')
+		)`, entityType, entityID, expectedHash, actualHash).Scan(&exists)
+	if err != nil || exists {
+		return err
+	}
+	_, err = pool.Exec(ctx, `
+		INSERT INTO tamper_incidents
+		(entity_type, entity_id, severity, expected_hash, actual_hash, blockchain_tx_id)
+		VALUES ($1, $2, $3, $4, $5, NULLIF($6,''))`,
+		entityType, entityID, severity, expectedHash, actualHash, txID)
+	return err
 }
 
 func (s *IntegrityService) RetryFailedAnchors(ctx context.Context, orgSlug string) (int, error) {

@@ -31,8 +31,7 @@ func (h *IntegrityHandler) Anchor(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	claims := middleware.GetClaims(c)
-	rec, err := h.integrity.Anchor(c.Request.Context(), slug, claims.UserID.String(), req)
+	rec, err := h.integrity.Anchor(c.Request.Context(), slug, middleware.GetActorID(c), req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -451,7 +450,15 @@ func (h *APIKeyHandler) Create(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, key)
+	c.JSON(http.StatusCreated, gin.H{
+		"id":         key.ID,
+		"name":       key.Name,
+		"key_prefix": key.KeyPrefix,
+		"scopes":     key.Scopes,
+		"active":     key.Active,
+		"created_at": key.CreatedAt,
+		"plain_key":  key.PlainKey,
+	})
 }
 
 func (h *APIKeyHandler) List(c *gin.Context) {
