@@ -64,7 +64,7 @@ func main() {
 	platformSvc := services.NewPlatformService(platformDB)
 
 	authHandler := handlers.NewAuthHandler(authSvc)
-	integrityHandler := handlers.NewIntegrityHandler(integritySvc, platformDB)
+	integrityHandler := handlers.NewIntegrityHandler(integritySvc, siteSvc, platformDB, cfg.JWTSecret)
 	siteHandler := handlers.NewSiteHandler(siteSvc, integritySvc, platformDB, cfg.JWTSecret)
 	apiKeyHandler := handlers.NewAPIKeyHandler(apiKeySvc, platformDB)
 	teamHandler := handlers.NewTeamHandler(teamSvc, platformDB)
@@ -108,6 +108,7 @@ func main() {
 			protected.GET("/dashboard/analytics", siteHandler.Analytics)
 
 			protected.GET("/integrity/records", integrityHandler.ListRecords)
+			protected.POST("/integrity/scan-tamper", integrityHandler.ScanTamper)
 			protected.GET("/tampering", integrityHandler.ListIncidents)
 
 			protected.GET("/sites", siteHandler.List)
@@ -196,6 +197,9 @@ func runMonitor(integrity *services.IntegrityService, sites *services.SiteServic
 			}
 			if n, err := sites.PollProtectedEndpoints(ctx, slug, secret, integrity); err == nil && n > 0 {
 				log.Printf("poll: anchored %d endpoint responses for org %s", n, slug)
+			}
+			if n, err := integrity.RunTamperDetect(ctx, slug, sites, secret); err == nil && n > 0 {
+				log.Printf("tamper-scan: detected %d tampered records for org %s", n, slug)
 			}
 		}
 		rows.Close()
