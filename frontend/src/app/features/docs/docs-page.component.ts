@@ -47,7 +47,7 @@ import { environment } from '../../../environments/environment';
             <ol class="space-y-2 text-sm text-slate-300 list-decimal list-inside">
               <li>User submits data on <strong class="text-white">your</strong> website (login with <strong class="text-white">your</strong> auth).</li>
               <li>Your backend saves the record to <strong class="text-white">your</strong> database.</li>
-              <li>Immediately after save, your backend calls ChainProof <code class="text-brand-300">/integrity/anchor</code> with <code class="text-emerald-400">entity_id</code> = user record id and <code class="text-emerald-400">payload</code> = fields to protect.</li>
+              <li>Immediately after save, your backend calls ChainProof <code class="text-brand-300">/integrity/anchor</code> with <code class="text-emerald-400">entity_id</code>, <code class="text-emerald-400">payload</code>, and optional <code class="text-emerald-400">verify</code> (how to re-fetch that record later — works for any path params).</li>
               <li>ChainProof stores SHA-256 hash + anchors on Hyperledger Fabric.</li>
               <li>Later, verify or scheduled checks detect if live data was altered.</li>
             </ol>
@@ -155,13 +155,15 @@ export class DocsPageComponent {
   ];
 
   anchorUserRecord = `{
-  "entity_type": "chat_message",
+  "entity_type": "session_messages",
   "entity_id": "29f939fd-2c7b-4029-9fc3-fef9f738bda7",
   "site_id": "YOUR_SITE_UUID",
-  "payload": {
-    "session_id": "29f939fd-2c7b-4029-9fc3-fef9f738bda7",
-    "question": "What are my symptoms?",
-    "answer": "Please consult a doctor..."
+  "payload": [ /* same JSON your GET endpoint returns */ ],
+  "verify": {
+    "method": "GET",
+    "path_template": "/api/sessions/{session_id}/messages",
+    "path_params": { "session_id": "$entity_id" },
+    "payload_from": "response"
   }
 }`;
 

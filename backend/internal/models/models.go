@@ -118,6 +118,18 @@ type TamperIncident struct {
 	Attribution         map[string]interface{} `json:"attribution,omitempty"`
 }
 
+// VerifyConfig tells ChainProof how to re-fetch live data for tamper detection.
+// Set once per anchor call — no per-session dashboard config required.
+type VerifyConfig struct {
+	Method       string            `json:"method"`
+	PathTemplate string            `json:"path_template"`
+	PathParams   map[string]string `json:"path_params,omitempty"`
+	RequestBody  string            `json:"request_body,omitempty"`
+	// PayloadFrom: "response" (default) hashes the JSON response body;
+	// "http" hashes {request, response} like endpoint polling.
+	PayloadFrom string `json:"payload_from,omitempty"`
+}
+
 type AnchorRequest struct {
 	EntityType         string                 `json:"entity_type" binding:"required"`
 	EntityID           string                 `json:"entity_id" binding:"required"`
@@ -125,6 +137,7 @@ type AnchorRequest struct {
 	TableName          string                 `json:"table_name,omitempty"`
 	PreviousRecordHash string                 `json:"previous_record_hash,omitempty"`
 	SiteID             string                 `json:"site_id,omitempty"`
+	Verify             *VerifyConfig          `json:"verify,omitempty"`
 }
 
 type VerifyRequest struct {

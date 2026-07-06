@@ -121,6 +121,12 @@ func (h *IntegrityHandler) ScanTamper(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	anchorStats, err := h.integrity.VerifyAnchoredRecords(c.Request.Context(), slug, h.sites, h.secret, 200)
+	if err == nil {
+		stats.Anchored += anchorStats.Anchored
+		stats.Verified += anchorStats.Verified
+		stats.Tampered += anchorStats.Tampered
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"anchored": stats.Anchored,
 		"verified": stats.Verified,

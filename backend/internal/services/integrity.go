@@ -77,6 +77,10 @@ func (s *IntegrityService) Anchor(ctx context.Context, orgSlug, actorID string, 
 	if len(payloadKeys) > 0 {
 		meta["payload_keys"] = payloadKeys
 	}
+	if req.Verify != nil {
+		meta["verify"] = req.Verify
+	}
+	meta["anchor_payload"] = req.Payload
 	if anchorErr != nil {
 		status = "failed"
 		meta["blockchain_error"] = anchorErr.Error()
@@ -106,7 +110,7 @@ func (s *IntegrityService) Anchor(ctx context.Context, orgSlug, actorID string, 
 			blockchain_tx_id = EXCLUDED.blockchain_tx_id,
 			blockchain_status = EXCLUDED.blockchain_status,
 			anchored_at = EXCLUDED.anchored_at,
-			metadata = EXCLUDED.metadata`,
+			metadata = integrity_records.metadata || EXCLUDED.metadata`,
 		rec.ID, rec.SiteID, rec.EntityType, rec.EntityID, rec.TableName,
 		rec.PayloadHash, rec.RecordHash, rec.PreviousRecordHash,
 		rec.BlockchainTxID, rec.BlockchainStatus, rec.AnchoredAt, metaJSON)
