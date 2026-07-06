@@ -219,6 +219,10 @@ func (s *SiteService) ApplyAuthHeaders(req *http.Request, auth SiteAuthSettings)
 		if auth.BearerToken != "" {
 			req.Header.Set("Authorization", "Bearer "+auth.BearerToken)
 		}
+	case "api_key_bearer":
+		if auth.APIKeyValue != "" {
+			req.Header.Set("Authorization", "Bearer "+auth.APIKeyValue)
+		}
 	case "api_key":
 		if auth.APIKeyHeader == "" {
 			auth.APIKeyHeader = "X-API-Key"

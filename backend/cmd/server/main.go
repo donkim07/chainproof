@@ -197,13 +197,21 @@ func runMonitor(integrity *services.IntegrityService, sites *services.SiteServic
 			}
 			if stats, err := sites.PollProtectedEndpoints(ctx, slug, secret, integrity); err == nil {
 				if stats.Anchored > 0 {
-					log.Printf("poll: anchored %d endpoint responses for org %s", stats.Anchored, slug)
+					log.Printf("poll: anchored %d static endpoint responses for org %s", stats.Anchored, slug)
 				}
 				if stats.Verified > 0 {
-					log.Printf("poll: verified %d endpoint responses for org %s", stats.Verified, slug)
+					log.Printf("poll: verified %d static endpoints for org %s", stats.Verified, slug)
 				}
 				if stats.Tampered > 0 {
-					log.Printf("poll: TAMPERING detected on %d endpoints for org %s", stats.Tampered, slug)
+					log.Printf("poll: TAMPERING on %d static endpoints for org %s", stats.Tampered, slug)
+				}
+			}
+			if vStats, err := integrity.VerifyAnchoredRecords(ctx, slug, sites, secret, 200); err == nil {
+				if vStats.Verified > 0 {
+					log.Printf("verify: checked %d anchored records for org %s", vStats.Verified, slug)
+				}
+				if vStats.Tampered > 0 {
+					log.Printf("verify: TAMPERING on %d anchored records for org %s", vStats.Tampered, slug)
 				}
 			}
 		}

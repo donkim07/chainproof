@@ -110,6 +110,10 @@ func (s *SiteService) collectDiscoveryCandidates(ctx context.Context, base *url.
 }
 
 func (s *SiteService) callEndpoint(ctx context.Context, baseURL string, auth SiteAuthSettings, method, path, body string) (int, string, error) {
+	return s.callEndpointWithLimit(ctx, baseURL, auth, method, path, body, 262144)
+}
+
+func (s *SiteService) callEndpointWithLimit(ctx context.Context, baseURL string, auth SiteAuthSettings, method, path, body string, maxBytes int64) (int, string, error) {
 	url := strings.TrimRight(baseURL, "/") + path
 	var bodyReader io.Reader
 	if body != "" {
@@ -128,7 +132,7 @@ func (s *SiteService) callEndpoint(ctx context.Context, baseURL string, auth Sit
 		return 0, "", err
 	}
 	defer resp.Body.Close()
-	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 8192))
+	respBody, _ := io.ReadAll(io.LimitReader(resp.Body, maxBytes))
 	return resp.StatusCode, string(respBody), nil
 }
 
@@ -255,6 +259,10 @@ func (s *SiteService) PollProtectedEndpoints(ctx context.Context, orgSlug, secre
 		auth := parseAuthFromSettings(settings, secret)
 		if !auth.PollEnabled {
 			stats.Skipped++
+			continue
+		}
+		// Templated paths (e.g. /users/{id}) are verified via developer anchor verify metadata.
+		if pathHasTemplate(path) {
 			continue
 		}
 		body := pollSampleBody(auth, path)
