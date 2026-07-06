@@ -56,16 +56,11 @@ interface Stats {
 
       <div class="space-y-6">
         <div class="card">
-          <h2 class="mb-4 text-lg font-semibold text-white">Integration Modes</h2>
-          <div class="space-y-3">
-            <div class="rounded-xl border border-brand-500/20 bg-brand-500/5 p-4">
-              <div class="font-medium text-brand-300">Developer API (recommended)</div>
-              <p class="mt-1 text-sm text-slate-400">Call /integrity/anchor from your backend after each user record save.</p>
-            </div>
-            <div class="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
-              <div class="font-medium text-emerald-300">Proxy / polling (advanced)</div>
-              <p class="mt-1 text-sm text-slate-400">Optional — route traffic or probe with one service API key, not user passwords.</p>
-            </div>
+          <h2 class="mb-4 text-lg font-semibold text-white">Integration</h2>
+          <div class="rounded-xl border border-brand-500/20 bg-brand-500/5 p-4">
+            <div class="font-medium text-brand-300">Developer API</div>
+            <p class="mt-1 text-sm text-slate-400">Your backend calls /integrity/anchor after each save. Include a verify block for automatic tamper checks on dynamic routes.</p>
+            <a routerLink="/docs" class="inline-block mt-2 text-sm text-brand-400 hover:underline">Read the guide →</a>
           </div>
         </div>
 
@@ -85,10 +80,10 @@ interface Stats {
 export class DashboardHomeComponent implements OnInit {
   stats: Stats | null = null;
   checklist = [
-    { step: '1', title: 'Register your site', desc: 'Add your backend URL — Developer API is the recommended path.', link: '/dashboard/sites' },
-    { step: '2', title: 'Discover & protect endpoints', desc: 'Scan for routes; enable protection on user-facing endpoints.', link: '/dashboard/sites' },
-    { step: '3', title: 'Create an API key', desc: 'Your server uses this to call /integrity/anchor after saves.', link: '/dashboard/api-keys' },
-    { step: '4', title: 'Read the owner docs', desc: 'Copy-paste examples for Go, Node, Python, PHP, Java, cURL.', link: '/docs' },
+    { step: '1', title: 'Register your site', desc: 'Add your backend URL and copy the Site ID.', link: '/dashboard/sites' },
+    { step: '2', title: 'Create an API key', desc: 'Put it in your server .env as CHAINPROOF_API_KEY.', link: '/dashboard/api-keys' },
+    { step: '3', title: 'Anchor after each save', desc: 'Call /integrity/anchor with site_id, payload, and verify block.', link: '/docs' },
+    { step: '4', title: 'Monitor tampering', desc: 'Incidents appear here when live data diverges from anchors.', link: '/dashboard/tampering' },
   ];
 
   constructor(private api: ApiService) {}
