@@ -261,14 +261,15 @@ func (s *SiteService) PollProtectedEndpoints(ctx context.Context, orgSlug, secre
 		if body == "" && strings.EqualFold(method, http.MethodPost) {
 			body = `{}`
 		}
-		status, respBody, err := s.invokeEndpoint(ctx, orgSlug, secret, siteID, baseURL, settings, auth, method, path, body)
+		pollPath := resolvePollPath(path, auth)
+		status, respBody, err := s.invokeEndpoint(ctx, orgSlug, secret, siteID, baseURL, settings, auth, method, pollPath, body)
 		if err != nil || status == 0 {
 			continue
 		}
 		if status == 401 || status == 403 {
 			continue
 		}
-		anchored, verified, tampered, err := s.verifyOrAnchorEndpoint(ctx, orgSlug, siteID, method, path, body, respBody, recordIDField, integrity)
+		anchored, verified, tampered, err := s.verifyOrAnchorEndpoint(ctx, orgSlug, siteID, method, pollPath, body, respBody, recordIDField, integrity)
 		if err != nil {
 			continue
 		}

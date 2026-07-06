@@ -21,6 +21,7 @@ type SiteAuthSettings struct {
 	BasicPass           string            `json:"basic_pass,omitempty"`
 	CustomHeaders       map[string]string `json:"custom_headers,omitempty"`
 	SampleBodies        map[string]string `json:"sample_bodies,omitempty"`
+	PollPaths           map[string]string `json:"poll_paths,omitempty"`
 	PollEnabled         bool              `json:"poll_enabled"`
 	PollIntervalMinutes int               `json:"poll_interval_minutes"`
 	LoginURL            string            `json:"login_url,omitempty"`
@@ -39,6 +40,7 @@ type SiteAuthPublic struct {
 	BasicPassSet        bool              `json:"basic_pass_set"`
 	CustomHeaders       map[string]string `json:"custom_headers,omitempty"`
 	SampleBodies        map[string]string `json:"sample_bodies,omitempty"`
+	PollPaths           map[string]string `json:"poll_paths,omitempty"`
 	PollEnabled         bool              `json:"poll_enabled"`
 	PollIntervalMinutes int               `json:"poll_interval_minutes"`
 	LoginURL            string            `json:"login_url,omitempty"`
@@ -119,6 +121,10 @@ func (s *SiteService) UpdateAuthSettings(ctx context.Context, orgSlug string, si
 		current.SampleBodies = req.SampleBodies
 		settings["auth_sample_bodies"] = req.SampleBodies
 	}
+	if req.PollPaths != nil {
+		current.PollPaths = req.PollPaths
+		settings["poll_paths"] = req.PollPaths
+	}
 	current.PollEnabled = req.PollEnabled
 	current.PollIntervalMinutes = req.PollIntervalMinutes
 	if current.PollIntervalMinutes <= 0 {
@@ -157,6 +163,7 @@ func parseAuthFromSettings(settings map[string]interface{}, secret string) SiteA
 		PollIntervalMinutes: intVal(settings["poll_interval_minutes"], 5),
 		CustomHeaders:       mapStr(settings["auth_custom_headers"]),
 		SampleBodies:        mapStr(settings["auth_sample_bodies"]),
+		PollPaths:           mapStr(settings["poll_paths"]),
 	}
 	if enc := strVal(settings["auth_bearer"], ""); enc != "" {
 		if v, err := crypto.Decrypt(secret, enc); err == nil {
@@ -196,6 +203,7 @@ func toPublicAuth(a SiteAuthSettings) *SiteAuthPublic {
 		BasicPassSet:        a.BasicPass != "",
 		CustomHeaders:       a.CustomHeaders,
 		SampleBodies:        a.SampleBodies,
+		PollPaths:           a.PollPaths,
 		PollEnabled:         a.PollEnabled,
 		PollIntervalMinutes: a.PollIntervalMinutes,
 		LoginURL:            a.LoginURL,

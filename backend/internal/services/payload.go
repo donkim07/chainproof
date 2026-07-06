@@ -27,12 +27,13 @@ func EndpointEntityType(path string) string {
 }
 
 // PollEntityID returns a stable identity for a protected endpoint invocation.
-// Prefer an id from the request body (record_id_field, session_id, id, …);
-// otherwise derive a deterministic id from method + path + request body.
 func PollEntityID(method, path, reqBody, recordIDField string) string {
 	method = strings.ToUpper(strings.TrimSpace(method))
 	if recordIDField == "" {
 		recordIDField = "id"
+	}
+	if sid := sessionIDFromPath(path); sid != "" {
+		return sid
 	}
 	for _, key := range []string{recordIDField, "session_id", "id", "uid", "record_id", "entity_id", "uuid"} {
 		if key == "" {
@@ -43,6 +44,32 @@ func PollEntityID(method, path, reqBody, recordIDField string) string {
 		}
 	}
 	return hashutil.StableID(method, path, reqBody)
+}
+
+func sessionIDFromPath(path string) string {
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+	for i, part := range parts {
+		if part == "sessions" && i+1 < len(parts) && parts[i+1] != "" && !strings.HasPrefix(parts[i+1], "{") {
+			return parts[i+1]
+		}
+	}
+	return ""
+}
+
+func resolvePollPath(pathPattern string, auth SiteAuthSettings) string {
+	if concrete := auth.PollPaths[pathPattern]; concrete != "" {
+		return concrete
+	}
+	// Auto-prefix /api for backends that expose JSON under /api/* (e.g. nginx SPA + API split).
+	if strings.Contains(pathPattern, "{") && !strings.HasPrefix(pathPattern, "/api/") {
+		if concrete := auth.PollPaths["/api"+pathPattern]; concrete != "" {
+			return concrete
+		}
+	}
+	if !strings.Contains(pathPattern, "{") && !strings.HasPrefix(pathPattern, "/api/") {
+		return "/api" + pathPattern
+	}
+	return pathPattern
 }
 
 func jsonStringField(raw, key string) string {
