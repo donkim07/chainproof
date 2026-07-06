@@ -135,6 +135,7 @@ type VerifyRequest struct {
 
 type VerifyResponse struct {
 	Intact       bool    `json:"intact"`
+	HasAnchor    bool    `json:"has_anchor"`
 	ExpectedHash string  `json:"expected_hash"`
 	ActualHash   string  `json:"actual_hash"`
 	TxID         *string `json:"tx_id,omitempty"`

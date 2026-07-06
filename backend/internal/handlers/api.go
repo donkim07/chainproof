@@ -116,12 +116,18 @@ func (h *IntegrityHandler) ScanTamper(c *gin.Context) {
 	if !ok {
 		return
 	}
-	n, err := h.integrity.RunTamperDetect(c.Request.Context(), slug, h.sites, h.secret)
+	stats, err := h.sites.PollProtectedEndpoints(c.Request.Context(), slug, h.secret, h.integrity)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"detected": n, "message": fmt.Sprintf("scan complete — %d tampered record(s) found", n)})
+	c.JSON(http.StatusOK, gin.H{
+		"anchored": stats.Anchored,
+		"verified": stats.Verified,
+		"tampered": stats.Tampered,
+		"skipped":  stats.Skipped,
+		"message":  fmt.Sprintf("poll complete — %d verified, %d tampered, %d newly anchored", stats.Verified, stats.Tampered, stats.Anchored),
+	})
 }
 
 type SiteHandler struct {

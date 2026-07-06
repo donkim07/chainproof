@@ -195,11 +195,16 @@ func runMonitor(integrity *services.IntegrityService, sites *services.SiteServic
 			if n, err := integrity.RetryFailedAnchors(ctx, slug); err == nil && n > 0 {
 				log.Printf("retry: re-anchored %d failed records for org %s", n, slug)
 			}
-			if n, err := sites.PollProtectedEndpoints(ctx, slug, secret, integrity); err == nil && n > 0 {
-				log.Printf("poll: anchored %d endpoint responses for org %s", n, slug)
-			}
-			if n, err := integrity.RunTamperDetect(ctx, slug, sites, secret); err == nil && n > 0 {
-				log.Printf("tamper-scan: detected %d tampered records for org %s", n, slug)
+			if stats, err := sites.PollProtectedEndpoints(ctx, slug, secret, integrity); err == nil {
+				if stats.Anchored > 0 {
+					log.Printf("poll: anchored %d endpoint responses for org %s", stats.Anchored, slug)
+				}
+				if stats.Verified > 0 {
+					log.Printf("poll: verified %d endpoint responses for org %s", stats.Verified, slug)
+				}
+				if stats.Tampered > 0 {
+					log.Printf("poll: TAMPERING detected on %d endpoints for org %s", stats.Tampered, slug)
+				}
 			}
 		}
 		rows.Close()

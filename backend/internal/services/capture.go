@@ -133,45 +133,52 @@ func (s *SiteService) callEndpoint(ctx context.Context, baseURL string, auth Sit
 }
 
 func extractEntityID(method, path, reqBody, respBody string) string {
-	for _, raw := range []string{reqBody, respBody} {
-		if raw == "" {
-			continue
-		}
-		var m map[string]interface{}
-		if json.Unmarshal([]byte(raw), &m) == nil {
-			for _, key := range []string{"session_id", "id", "uid", "record_id", "entity_id", "uuid"} {
-				if v, ok := m[key]; ok {
-					return fmt.Sprintf("%v", v)
-				}
-			}
-		}
-	}
-	return fmt.Sprintf("%s:%s:%d", method, path, time.Now().UnixNano())
+	_ = respBody
+	return PollEntityID(method, path, reqBody, "id")
 }
 
-func (s *SiteService) anchorPayload(ctx context.Context, orgSlug string, siteID uuid.UUID, method, path, reqBody, respBody string, integrity *IntegrityService) (string, error) {
+func (s *SiteService) anchorPayload(ctx context.Context, orgSlug string, siteID uuid.UUID, method, path, reqBody, respBody, recordIDField string, integrity *IntegrityService) (string, error) {
 	if integrity == nil {
 		return "", fmt.Errorf("integrity service unavailable")
 	}
-	payload := map[string]interface{}{
-		"method":   method,
-		"path":     path,
-		"request":  jsonRaw(reqBody),
-		"response": jsonRaw(respBody),
-		"captured_at": time.Now().UTC().Format(time.RFC3339),
-	}
-	entityType := strings.TrimPrefix(path, "/")
-	if entityType == "" {
-		entityType = "root"
-	}
-	entityID := extractEntityID(method, path, reqBody, respBody)
-	_, err := integrity.Anchor(ctx, orgSlug, "proxy", models.AnchorRequest{
+	payload := BuildIntegrityPayload(reqBody, respBody)
+	entityType := EndpointEntityType(path)
+	entityID := PollEntityID(method, path, reqBody, recordIDField)
+	_, err := integrity.Anchor(ctx, orgSlug, "poll", models.AnchorRequest{
 		SiteID:     siteID.String(),
 		EntityType: entityType,
 		EntityID:   entityID,
 		Payload:    payload,
 	})
 	return entityID, err
+}
+
+func (s *SiteService) verifyOrAnchorEndpoint(ctx context.Context, orgSlug string, siteID uuid.UUID, method, path, reqBody, respBody, recordIDField string, integrity *IntegrityService) (anchored, verified, tampered bool, err error) {
+	if integrity == nil {
+		return false, false, false, fmt.Errorf("integrity service unavailable")
+	}
+	payload := BuildIntegrityPayload(reqBody, respBody)
+	entityType := EndpointEntityType(path)
+	entityID := PollEntityID(method, path, reqBody, recordIDField)
+
+	resp, err := integrity.Verify(ctx, orgSlug, models.VerifyRequest{
+		EntityType: entityType,
+		EntityID:   entityID,
+		Payload:    payload,
+	})
+	if err != nil {
+		return false, false, false, err
+	}
+	if resp.HasAnchor {
+		if resp.Intact {
+			return false, true, false, nil
+		}
+		return false, false, true, nil
+	}
+	if _, err := s.anchorPayload(ctx, orgSlug, siteID, method, path, reqBody, respBody, recordIDField, integrity); err != nil {
+		return false, false, false, err
+	}
+	return true, false, false, nil
 }
 
 func jsonRaw(s string) interface{} {
@@ -207,42 +214,50 @@ func (s *SiteService) AnchorIfProtected(ctx context.Context, orgSlug, secret str
 	if respBody == "" && reqBody == "" {
 		return nil
 	}
-	_, err := s.anchorPayload(ctx, orgSlug, siteID, method, path, reqBody, respBody, integrity)
+	_, err := s.anchorPayload(ctx, orgSlug, siteID, method, path, reqBody, respBody, "id", integrity)
 	return err
 }
 
-func (s *SiteService) PollProtectedEndpoints(ctx context.Context, orgSlug, secret string, integrity *IntegrityService) (int, error) {
+type PollStats struct {
+	Anchored  int `json:"anchored"`
+	Verified  int `json:"verified"`
+	Tampered  int `json:"tampered"`
+	Skipped   int `json:"skipped"`
+}
+
+func (s *SiteService) PollProtectedEndpoints(ctx context.Context, orgSlug, secret string, integrity *IntegrityService) (PollStats, error) {
+	stats := PollStats{}
 	pool, _, err := s.tenant.GetPool(ctx, orgSlug)
 	if err != nil {
-		return 0, err
+		return stats, err
 	}
 	rows, err := pool.Query(ctx, `
-		SELECT s.id, s.base_url, s.settings, pe.method, pe.path_pattern
+		SELECT s.id, s.base_url, s.settings, pe.method, pe.path_pattern, COALESCE(pe.record_id_field, 'id')
 		FROM sites s
 		JOIN protected_endpoints pe ON pe.site_id = s.id
 		WHERE pe.enabled = true AND s.integration_mode IN ('proxy', 'api')
 		ORDER BY s.id`)
 	if err != nil {
-		return 0, err
+		return stats, err
 	}
 	defer rows.Close()
 
-	anchored := 0
 	for rows.Next() {
 		var siteID uuid.UUID
 		var baseURL string
 		var settingsJSON []byte
-		var method, path string
-		if err := rows.Scan(&siteID, &baseURL, &settingsJSON, &method, &path); err != nil {
+		var method, path, recordIDField string
+		if err := rows.Scan(&siteID, &baseURL, &settingsJSON, &method, &path, &recordIDField); err != nil {
 			continue
 		}
 		settings := map[string]interface{}{}
 		_ = json.Unmarshal(settingsJSON, &settings)
 		auth := parseAuthFromSettings(settings, secret)
 		if !auth.PollEnabled {
+			stats.Skipped++
 			continue
 		}
-		body := auth.SampleBodies[path]
+		body := pollSampleBody(auth, path)
 		if body == "" && strings.EqualFold(method, http.MethodPost) {
 			body = `{}`
 		}
@@ -253,11 +268,21 @@ func (s *SiteService) PollProtectedEndpoints(ctx context.Context, orgSlug, secre
 		if status == 401 || status == 403 {
 			continue
 		}
-		if _, err := s.anchorPayload(ctx, orgSlug, siteID, method, path, body, respBody, integrity); err == nil {
-			anchored++
+		anchored, verified, tampered, err := s.verifyOrAnchorEndpoint(ctx, orgSlug, siteID, method, path, body, respBody, recordIDField, integrity)
+		if err != nil {
+			continue
+		}
+		if anchored {
+			stats.Anchored++
+		}
+		if verified {
+			stats.Verified++
+		}
+		if tampered {
+			stats.Tampered++
 		}
 	}
-	return anchored, nil
+	return stats, nil
 }
 
 func (s *SiteService) ListCaptureLogs(ctx context.Context, orgSlug string, siteID uuid.UUID, limit int) ([]models.ProxyCaptureLog, error) {

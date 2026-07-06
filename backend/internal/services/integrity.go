@@ -137,14 +137,14 @@ func (s *IntegrityService) Verify(ctx context.Context, orgSlug string, req model
 		req.EntityType, req.EntityID).Scan(&expectedHash, &recordHash, &txID)
 	if err != nil {
 		return &models.VerifyResponse{
-			Intact: false, ActualHash: actualHash,
+			Intact: false, HasAnchor: false, ActualHash: actualHash,
 			Message: "No anchored record found for this entity",
 		}, nil
 	}
 
 	intact := expectedHash == actualHash
 	resp := &models.VerifyResponse{
-		Intact: intact, ExpectedHash: expectedHash, ActualHash: actualHash,
+		Intact: intact, HasAnchor: true, ExpectedHash: expectedHash, ActualHash: actualHash,
 	}
 	if txID != "" {
 		resp.TxID = &txID
