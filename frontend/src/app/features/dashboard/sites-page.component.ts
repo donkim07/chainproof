@@ -9,7 +9,7 @@ import { PageHeaderComponent } from '../../shared/components/page-header/page-he
 import { StatCardComponent } from '../../shared/components/stat-card/stat-card.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { CopyButtonComponent } from '../../shared/components/copy-button/copy-button.component';
-import { environment } from '../../../environments/environment';
+import { ConfigService } from '../../core/services/config.service';
 
 interface Site {
   id: string;
@@ -145,12 +145,28 @@ interface SiteAuth {
 
           @if (discovered.length) {
             <div class="card border-brand-500/20 animate-slide-up">
-              <h3 class="text-sm font-semibold text-white mb-3">Discovered — {{ discovered.length }} routes</h3>
+              <h3 class="text-sm font-semibold text-white mb-1">Discovered — {{ discovered.length }} live routes</h3>
+              <p class="text-xs text-slate-500 mb-3">From OpenAPI/Swagger, HTML, robots.txt, or JS — HTTP 200, 401, or 403 only.</p>
               <div class="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
                 @for (d of discovered; track d.method + d.path) {
                   <span class="rounded-lg border border-slate-700 bg-slate-900/60 px-2 py-1 text-xs font-mono">
                     <span class="text-brand-400">{{ d.method }}</span> {{ d.path }}
+                    <span class="text-slate-500 ml-1">{{ d.status }}</span>
                   </span>
+                }
+              </div>
+            </div>
+          } @else if (suggestions.length) {
+            <div class="card border-amber-500/20 animate-slide-up">
+              <h3 class="text-sm font-semibold text-amber-300 mb-1">Suggested paths — {{ suggestions.length }} (wordlist scan)</h3>
+              <p class="text-xs text-slate-500 mb-3">No OpenAPI/HTML routes found. These responded with 200, 401, or 403 from a common API wordlist — add manually if relevant.</p>
+              <div class="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
+                @for (d of suggestions; track d.method + d.path) {
+                  <button type="button" class="rounded-lg border border-slate-700 bg-slate-900/60 px-2 py-1 text-xs font-mono hover:border-brand-500/50"
+                    (click)="manualPath = d.path; manualMethod = d.method">
+                    <span class="text-amber-400">{{ d.method }}</span> {{ d.path }}
+                    <span class="text-slate-500 ml-1">{{ d.status }}</span>
+                  </button>
                 }
               </div>
             </div>
@@ -261,6 +277,7 @@ export class SitesPageComponent implements OnInit {
   sites: Site[] = [];
   endpoints: Endpoint[] = [];
   discovered: Discovered[] = [];
+  suggestions: Discovered[] = [];
   selectedSite: Site | null = null;
   showForm = false;
   editingId = '';
@@ -273,9 +290,12 @@ export class SitesPageComponent implements OnInit {
   newSite = { name: '', base_url: '', integration_mode: 'api' };
   authForm: SiteAuth = { auth_type: 'none', poll_enabled: false, poll_interval_minutes: 5, api_key_header: 'X-API-Key' };
   testing = false;
-  apiBase = environment.apiUrl;
 
-  constructor(private api: ApiService, private toast: ToastService) {}
+  constructor(private api: ApiService, private toast: ToastService, private config: ConfigService) {}
+
+  get apiBase() {
+    return this.config.apiOrigin;
+  }
 
   get envSnippet() {
     if (!this.selectedSite) return '';
@@ -324,6 +344,7 @@ CHAINPROOF_SITE_ID=${this.selectedSite.id}`;
   selectSite(site: Site) {
     this.selectedSite = site;
     this.discovered = [];
+    this.suggestions = [];
     this.api.get<Endpoint[]>(`/api/v1/sites/${site.id}/endpoints`).subscribe(e => (this.endpoints = e));
     this.api.get<SiteAuth>(`/api/v1/sites/${site.id}/auth`).subscribe(a => {
       this.authForm = {
@@ -364,12 +385,21 @@ CHAINPROOF_SITE_ID=${this.selectedSite.id}`;
   runDiscover() {
     if (!this.selectedSite) return;
     this.discovering = true;
-    this.api.post<{ discovered: Discovered[] }>(`/api/v1/sites/${this.selectedSite.id}/discover`, {}).subscribe({
+    this.api.post<{ discovered: Discovered[]; suggestions?: Discovered[] }>(`/api/v1/sites/${this.selectedSite.id}/discover`, {}).subscribe({
       next: res => {
         this.discovered = res.discovered || [];
+        this.suggestions = res.suggestions || [];
         this.lastDiscovery = new Date().toLocaleTimeString();
-        this.toast.success(`Found ${this.discovered.length} routes`);
-        this.api.get<Endpoint[]>(`/api/v1/sites/${this.selectedSite!.id}/endpoints`).subscribe(e => (this.endpoints = e));
+        if (this.discovered.length) {
+          this.toast.success(`Found ${this.discovered.length} live routes`);
+        } else if (this.suggestions.length) {
+          this.toast.success(`${this.suggestions.length} wordlist suggestions (no OpenAPI routes)`);
+        } else {
+          this.toast.error('No routes responded with 200, 401, or 403');
+        }
+        if (this.discovered.length) {
+          this.api.get<Endpoint[]>(`/api/v1/sites/${this.selectedSite!.id}/endpoints`).subscribe(e => (this.endpoints = e));
+        }
         this.discovering = false;
       },
       error: e => {

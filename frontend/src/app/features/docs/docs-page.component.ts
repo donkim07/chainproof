@@ -4,7 +4,7 @@ import { CommonModule } from '@angular/common';
 import { PublicNavComponent } from '../../shared/components/public-nav/public-nav.component';
 import { CodeBlockComponent } from '../../shared/components/code-block/code-block.component';
 import { ButtonComponent } from '../../shared/components/button/button.component';
-import { environment } from '../../../environments/environment';
+import { ConfigService } from '../../core/services/config.service';
 
 @Component({
   selector: 'app-docs-page',
@@ -166,11 +166,6 @@ export class DocsPageComponent {
     { id: 'blockchain', title: 'Blockchain' },
   ];
 
-  envExample = `# ChainProof credentials (Dashboard → Sites + API Keys)
-CHAINPROOF_API_KEY=cp_your_key_from_dashboard
-CHAINPROOF_BASE_URL=${environment.apiUrl}/api/v1
-CHAINPROOF_SITE_ID=your-site-uuid-from-dashboard`;
-
   anchorUserRecord = `{
   "entity_type": "session_messages",
   "entity_id": "29f939fd-2c7b-4029-9fc3-fef9f738bda7",
@@ -203,7 +198,17 @@ CHAINPROOF_SITE_ID=your-site-uuid-from-dashboard`;
   "payload": { "data": [ /* current live data */ ] }
 }`;
 
-  anchorWithApiKey = `curl -X POST ${environment.apiUrl}/api/v1/integrity/anchor \\
+  constructor(private config: ConfigService) {}
+
+  get envExample() {
+    return `# ChainProof credentials (Dashboard → Sites + API Keys)
+CHAINPROOF_API_KEY=cp_your_key_from_dashboard
+CHAINPROOF_BASE_URL=${this.config.apiOrigin}/api/v1
+CHAINPROOF_SITE_ID=your-site-uuid-from-dashboard`;
+  }
+
+  get anchorWithApiKey() {
+    return `curl -X POST ${this.config.apiOrigin}/api/v1/integrity/anchor \\
   -H "X-API-Key: $CHAINPROOF_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -218,8 +223,10 @@ CHAINPROOF_SITE_ID=your-site-uuid-from-dashboard`;
       "payload_from": "response"
     }
   }'`;
+  }
 
-  curlVerify = `curl -X POST ${environment.apiUrl}/api/v1/integrity/verify \\
+  get curlVerify() {
+    return `curl -X POST ${this.config.apiOrigin}/api/v1/integrity/verify \\
   -H "X-API-Key: $CHAINPROOF_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -227,9 +234,12 @@ CHAINPROOF_SITE_ID=your-site-uuid-from-dashboard`;
     "entity_id": "29f939fd-2c7b-4029-9fc3-fef9f738bda7",
     "payload": { "data": [] }
   }'`;
+  }
 
-  samples = {
-    go: `func anchorRecord(apiKey, siteID, entityID string, payload map[string]interface{}) error {
+  get samples() {
+    const base = this.config.apiOrigin;
+    return {
+      go: `func anchorRecord(apiKey, siteID, entityID string, payload map[string]interface{}) error {
     body, _ := json.Marshal(map[string]interface{}{
         "entity_type": "session_messages",
         "entity_id":   entityID,
@@ -242,13 +252,13 @@ CHAINPROOF_SITE_ID=your-site-uuid-from-dashboard`;
             "payload_from":  "response",
         },
     })
-    req, _ := http.NewRequest("POST", "${environment.apiUrl}/api/v1/integrity/anchor", bytes.NewReader(body))
+    req, _ := http.NewRequest("POST", "${base}/api/v1/integrity/anchor", bytes.NewReader(body))
     req.Header.Set("X-API-Key", apiKey)
     req.Header.Set("Content-Type", "application/json")
     _, err := http.DefaultClient.Do(req)
     return err
 }`,
-    python: `import os, requests
+      python: `import os, requests
 
 def anchor_record(entity_id: str, payload: dict) -> None:
     requests.post(
@@ -268,7 +278,7 @@ def anchor_record(entity_id: str, payload: dict) -> None:
         },
         timeout=15,
     )`,
-    node: `async function anchorRecord(entityId, payload) {
+      node: `async function anchorRecord(entityId, payload) {
   await fetch(\`\${process.env.CHAINPROOF_BASE_URL}/integrity/anchor\`, {
     method: 'POST',
     headers: {
@@ -289,7 +299,7 @@ def anchor_record(entity_id: str, payload: dict) -> None:
     }),
   });
 }`,
-    php: `function anchorRecord(string $entityId, array $payload): void {
+      php: `function anchorRecord(string $entityId, array $payload): void {
     $ch = curl_init(getenv('CHAINPROOF_BASE_URL') . '/integrity/anchor');
     curl_setopt_array($ch, [
         CURLOPT_POST => true,
@@ -314,7 +324,7 @@ def anchor_record(entity_id: str, payload: dict) -> None:
     curl_exec($ch);
     curl_close($ch);
 }`,
-    java: `public void anchorRecord(String entityId, Map<String, Object> payload) throws Exception {
+      java: `public void anchorRecord(String entityId, Map<String, Object> payload) throws Exception {
     var body = Map.of(
         "entity_type", "session_messages",
         "entity_id", entityId,
@@ -335,5 +345,6 @@ def anchor_record(entity_id: str, payload: dict) -> None:
         .build();
     HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.discarding());
 }`,
-  };
+    };
+  }
 }

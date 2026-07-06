@@ -10,29 +10,42 @@ import (
 	"strings"
 )
 
+// API route wordlist — probed only when passive discovery finds nothing.
 var apiWordlist = []string{
-	"/", "/health", "/healthz", "/ready", "/live", "/status", "/version", "/metrics",
-	"/api", "/api/", "/api/health", "/api/healthz", "/api/status", "/api/version",
+	"/health", "/healthz", "/ready", "/live", "/status", "/version", "/metrics",
+	"/api/health", "/api/healthz", "/api/status", "/api/version",
 	"/api/v1", "/api/v2", "/api/v3",
 	"/api/users", "/api/user", "/api/auth", "/api/auth/login", "/api/auth/register",
 	"/api/login", "/api/register", "/api/logout", "/api/me", "/api/profile",
 	"/api/ask", "/ask", "/api/chat", "/chat", "/api/messages",
 	"/api/records", "/api/data", "/api/transactions", "/api/orders", "/api/products",
-	"/api/employees", "/api/sites", "/api/webhooks", "/api/integrity/anchor", "/api/integrity/verify",
+	"/api/employees", "/api/sites", "/api/webhooks",
 	"/graphql", "/api/graphql",
-	"/swagger", "/swagger-ui", "/swagger-ui.html", "/swagger/index.html",
-	"/docs", "/api-docs", "/redoc", "/openapi.json", "/openapi.yaml", "/swagger.json",
-	"/v1/swagger.json", "/v2/swagger.json", "/api/swagger.json", "/api/openapi.json",
-	"/.well-known/openid-configuration", "/.well-known/security.txt",
-	"/robots.txt", "/sitemap.xml",
-	"/admin", "/admin/api", "/internal", "/webhook", "/webhooks", "/hooks",
 	"/auth/login", "/auth/register", "/login", "/register",
+	"/admin", "/admin/api", "/internal", "/webhook", "/webhooks", "/hooks",
 }
 
-var docPaths = []string{
-	"/openapi.json", "/openapi.yaml", "/swagger.json", "/api/openapi.json",
-	"/v1/swagger.json", "/v2/swagger.json", "/api/swagger.json", "/api-docs",
-	"/swagger/v1/swagger.json", "/docs/swagger.json",
+// OpenAPI / Swagger spec paths (JSON/YAML) — checked relative to base and /api prefix.
+var openAPISpecPaths = []string{
+	"/openapi.json", "/openapi.yaml", "/openapi.yml",
+	"/swagger.json", "/swagger.yaml", "/swagger.yml",
+	"/api/openapi.json", "/api/swagger.json",
+	"/api/v1/openapi.json", "/api/v2/openapi.json", "/api/v3/openapi.json",
+	"/api/v1/swagger.json", "/api/v2/swagger.json", "/api/v3/swagger.json",
+	"/v1/swagger.json", "/v2/swagger.json", "/v3/swagger.json",
+	"/v2/api-docs", "/v3/api-docs", "/api-docs",
+	"/api/v2/api-docs", "/api/v3/api-docs",
+	"/swagger/v1/swagger.json", "/swagger/v2/swagger.json", "/swagger/v3/swagger.json",
+	"/swagger-resources", "/swagger-resources/configuration/ui",
+	"/api/swagger-resources", "/api/swagger-resources/configuration/ui",
+}
+
+// Swagger UI / ReDoc HTML pages — used to locate linked spec files.
+var swaggerUIPaths = []string{
+	"/docs", "/api/docs", "/redoc", "/api/redoc",
+	"/swagger", "/swagger-ui", "/swagger-ui.html", "/swagger-ui/index.html",
+	"/api/swagger", "/api/swagger-ui", "/api/swagger-ui.html", "/api/swagger-ui/index.html",
+	"/documentation", "/api/documentation",
 }
 
 var jsRoutePatterns = []*regexp.Regexp{
@@ -41,6 +54,13 @@ var jsRoutePatterns = []*regexp.Regexp{
 	regexp.MustCompile(`["'](\/[a-zA-Z0-9_\-]+\/[a-zA-Z0-9_\-\/\{\}]+)["']`),
 	regexp.MustCompile(`path:\s*["']([^"']+)["']`),
 	regexp.MustCompile(`url:\s*["']([^"']+)["']`),
+}
+
+var specURLPatterns = []*regexp.Regexp{
+	regexp.MustCompile(`url:\s*["']([^"']+\.(?:json|yaml|yml))["']`),
+	regexp.MustCompile(`"url"\s*:\s*["']([^"']+)["']`),
+	regexp.MustCompile(`spec-url=["']([^"']+)["']`),
+	regexp.MustCompile(`href=["']([^"']*(?:openapi|swagger|api-docs)[^"']*)["']`),
 }
 
 func (s *SiteService) discoverFromRobots(ctx context.Context, base *url.URL) []string {
@@ -106,24 +126,149 @@ func (s *SiteService) fetchSitemapPaths(ctx context.Context, sitemapURL string) 
 	return paths
 }
 
-func (s *SiteService) discoverFromOpenAPI(ctx context.Context, base *url.URL) []string {
-	var paths []string
-	for _, docPath := range docPaths {
-		docURL := base.Scheme + "://" + base.Host + docPath
-		req, _ := http.NewRequestWithContext(ctx, http.MethodGet, docURL, nil)
-		req.Header.Set("Accept", "application/json")
-		resp, err := s.client.Do(req)
-		if err != nil || resp.StatusCode >= 400 {
-			if resp != nil {
-				resp.Body.Close()
+func apiPathPrefixes(base *url.URL) []string {
+	prefixes := []string{""}
+	path := strings.TrimRight(base.Path, "/")
+	if path != "" && path != "/" {
+		prefixes = append(prefixes, path)
+	}
+	for _, p := range []string{"/api", "/api/v1", "/api/v2"} {
+		found := false
+		for _, existing := range prefixes {
+			if existing == p || strings.HasSuffix(existing, p) {
+				found = true
+				break
 			}
-			continue
 		}
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
-		resp.Body.Close()
+		if !found {
+			prefixes = append(prefixes, p)
+		}
+	}
+	return prefixes
+}
+
+func (s *SiteService) discoverFromOpenAPI(ctx context.Context, base *url.URL) []string {
+	seenSpecs := map[string]bool{}
+	var paths []string
+
+	trySpec := func(specPath string) {
+		if seenSpecs[specPath] {
+			return
+		}
+		seenSpecs[specPath] = true
+		specURL := base.Scheme + "://" + base.Host + specPath
+		body, ok := s.fetchSpecBody(ctx, specURL)
+		if !ok {
+			return
+		}
 		paths = append(paths, parseOpenAPIPaths(body)...)
 	}
+
+	for _, prefix := range apiPathPrefixes(base) {
+		for _, docPath := range openAPISpecPaths {
+			trySpec(prefix + docPath)
+		}
+	}
+
+	for _, prefix := range apiPathPrefixes(base) {
+		for _, uiPath := range swaggerUIPaths {
+			uiURL := base.Scheme + "://" + base.Host + prefix + uiPath
+			for _, specRef := range s.extractSpecRefsFromUI(ctx, uiURL) {
+				if strings.HasPrefix(specRef, "http") {
+					if u, err := url.Parse(specRef); err == nil && strings.EqualFold(u.Host, base.Host) {
+						trySpec(u.Path)
+					}
+					continue
+				}
+				trySpec(prefix + specRef)
+				if strings.HasPrefix(specRef, "/") {
+					trySpec(specRef)
+				}
+			}
+		}
+	}
+
 	return uniquePaths(paths)
+}
+
+func (s *SiteService) fetchSpecBody(ctx context.Context, specURL string) ([]byte, bool) {
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, specURL, nil)
+	req.Header.Set("Accept", "application/json, application/yaml, text/yaml, */*")
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, false
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, false
+	}
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+	if len(body) == 0 {
+		return nil, false
+	}
+	trim := strings.TrimSpace(string(body))
+	if strings.HasPrefix(trim, "<") {
+		return nil, false
+	}
+	return body, true
+}
+
+func (s *SiteService) extractSpecRefsFromUI(ctx context.Context, uiURL string) []string {
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, uiURL, nil)
+	req.Header.Set("Accept", "text/html, application/json, */*")
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil
+	}
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 512*1024))
+	text := string(body)
+
+	// Spring swagger-resources returns JSON array of {location: "..."}
+	if strings.HasPrefix(strings.TrimSpace(text), "[") || strings.HasPrefix(strings.TrimSpace(text), "{") {
+		var resources []map[string]interface{}
+		if err := json.Unmarshal(body, &resources); err == nil {
+			var refs []string
+			for _, r := range resources {
+				if loc, ok := r["location"].(string); ok && loc != "" {
+					refs = append(refs, loc)
+				}
+				if urlVal, ok := r["url"].(string); ok && urlVal != "" {
+					refs = append(refs, urlVal)
+				}
+			}
+			if len(refs) > 0 {
+				return refs
+			}
+		}
+		var cfg map[string]interface{}
+		if err := json.Unmarshal(body, &cfg); err == nil {
+			if urlVal, ok := cfg["url"].(string); ok {
+				return []string{urlVal}
+			}
+		}
+	}
+
+	var refs []string
+	seen := map[string]bool{}
+	for _, re := range specURLPatterns {
+		for _, m := range re.FindAllStringSubmatch(text, -1) {
+			if len(m) < 2 || seen[m[1]] {
+				continue
+			}
+			ref := m[1]
+			if strings.Contains(ref, "openapi") || strings.Contains(ref, "swagger") ||
+				strings.Contains(ref, "api-docs") || strings.HasSuffix(ref, ".json") ||
+				strings.HasSuffix(ref, ".yaml") || strings.HasSuffix(ref, ".yml") {
+				seen[ref] = true
+				refs = append(refs, ref)
+			}
+		}
+	}
+	return refs
 }
 
 func parseOpenAPIPaths(body []byte) []string {
@@ -145,7 +290,6 @@ func parseOpenAPIPaths(body []byte) []string {
 }
 
 func (s *SiteService) discoverFromJSBundles(ctx context.Context, base *url.URL) []string {
-	// Fetch homepage and extract script src URLs, then scan JS for route patterns.
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, base.String(), nil)
 	resp, err := s.client.Do(req)
 	if err != nil {

@@ -1,13 +1,15 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { environment } from '../../../environments/environment';
+import { ConfigService } from './config.service';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
-  private base = environment.apiUrl;
+  constructor(private http: HttpClient, private config: ConfigService) {}
 
-  constructor(private http: HttpClient) {}
+  private get base(): string {
+    return this.config.apiUrl;
+  }
 
   private headers(): HttpHeaders {
     const token = localStorage.getItem('cp_token');

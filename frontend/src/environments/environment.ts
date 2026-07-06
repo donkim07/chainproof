@@ -1,4 +1,5 @@
 export const environment = {
   production: false,
-  apiUrl: process.env["API_URL"] || "http://localhost:8080"
+  /** Fallback when config.json is unavailable (local dev). */
+  apiUrl: 'http://localhost:8080',
 };

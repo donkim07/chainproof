@@ -88,25 +88,26 @@ func primarySource(sources []string) string {
 	return "unknown"
 }
 
-func (s *SiteService) collectDiscoveryCandidates(ctx context.Context, base *url.URL) map[string][]string {
-	candidates := map[string][]string{}
+func (s *SiteService) collectDiscoveryCandidates(ctx context.Context, base *url.URL) (passive, wordlist map[string][]string) {
+	passive = map[string][]string{}
+	wordlist = map[string][]string{}
 
 	for _, p := range apiWordlist {
-		addDiscoverySource(candidates, p, "wordlist")
+		addDiscoverySource(wordlist, p, "wordlist")
 	}
 	for _, p := range s.discoverFromHTML(ctx, base) {
-		addDiscoverySource(candidates, p, "html")
+		addDiscoverySource(passive, p, "html")
 	}
 	for _, p := range s.discoverFromRobots(ctx, base) {
-		addDiscoverySource(candidates, p, "robots")
+		addDiscoverySource(passive, p, "robots")
 	}
 	for _, p := range s.discoverFromOpenAPI(ctx, base) {
-		addDiscoverySource(candidates, p, "openapi")
+		addDiscoverySource(passive, p, "openapi")
 	}
 	for _, p := range s.discoverFromJSBundles(ctx, base) {
-		addDiscoverySource(candidates, p, "javascript")
+		addDiscoverySource(passive, p, "javascript")
 	}
-	return candidates
+	return passive, wordlist
 }
 
 func (s *SiteService) callEndpoint(ctx context.Context, baseURL string, auth SiteAuthSettings, method, path, body string) (int, string, error) {

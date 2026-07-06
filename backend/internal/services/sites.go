@@ -19,6 +19,7 @@ import (
 	"github.com/chainproof/baas/internal/models"
 	"github.com/chainproof/baas/internal/tenant"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type SiteService struct {
@@ -85,7 +86,7 @@ func (s *SiteService) List(ctx context.Context, orgSlug string) ([]models.Site, 
 	return sites, nil
 }
 
-func (s *SiteService) DiscoverEndpoints(ctx context.Context, orgSlug string, siteID uuid.UUID) ([]models.DiscoveredEndpoint, error) {
+func (s *SiteService) DiscoverEndpoints(ctx context.Context, orgSlug string, siteID uuid.UUID) (*models.DiscoverResult, error) {
 	pool, _, err := s.tenant.GetPool(ctx, orgSlug)
 	if err != nil {
 		return nil, err
@@ -103,8 +104,17 @@ func (s *SiteService) DiscoverEndpoints(ctx context.Context, orgSlug string, sit
 		return nil, fmt.Errorf("invalid base url")
 	}
 
-	candidates := s.collectDiscoveryCandidates(ctx, u)
+	passiveCandidates, wordlistCandidates := s.collectDiscoveryCandidates(ctx, u)
+	discovered := s.probeAndCollect(ctx, pool, siteID, baseURL, passiveCandidates, true)
+	result := &models.DiscoverResult{Discovered: discovered}
 
+	if len(discovered) == 0 {
+		result.Suggestions = s.probeAndCollect(ctx, pool, siteID, baseURL, wordlistCandidates, false)
+	}
+	return result, nil
+}
+
+func (s *SiteService) probeAndCollect(ctx context.Context, pool *pgxpool.Pool, siteID uuid.UUID, baseURL string, candidates map[string][]string, persist bool) []models.DiscoveredEndpoint {
 	type pathProbe struct {
 		path     string
 		sources  []string
@@ -121,10 +131,9 @@ func (s *SiteService) DiscoverEndpoints(ctx context.Context, orgSlug string, sit
 		return probes[i].path < probes[j].path
 	})
 
-	var discovered []models.DiscoveredEndpoint
+	var out []models.DiscoveredEndpoint
 	for _, probe := range probes {
-		seeded := containsSource(probe.sources, "wordlist") || containsSource(probe.sources, "openapi")
-		status, methods := s.probeEndpoint(ctx, baseURL, probe.path, seeded)
+		status, methods := s.probeEndpoint(ctx, baseURL, probe.path)
 		if status == 0 {
 			continue
 		}
@@ -133,16 +142,18 @@ func (s *SiteService) DiscoverEndpoints(ctx context.Context, orgSlug string, sit
 				Method: method, Path: probe.path, Status: status,
 				Source: primarySource(probe.sources), Sources: probe.sources, Priority: probe.priority,
 			}
-			discovered = append(discovered, ep)
-			_, _ = pool.Exec(ctx, `
-				INSERT INTO protected_endpoints (site_id, method, path_pattern, enabled, auto_discovered)
-				VALUES ($1, $2, $3, false, true)
-				ON CONFLICT (site_id, method, path_pattern) DO NOTHING`,
-				siteID, method, probe.path)
+			out = append(out, ep)
+			if persist {
+				_, _ = pool.Exec(ctx, `
+					INSERT INTO protected_endpoints (site_id, method, path_pattern, enabled, auto_discovered)
+					VALUES ($1, $2, $3, false, true)
+					ON CONFLICT (site_id, method, path_pattern) DO NOTHING`,
+					siteID, method, probe.path)
+			}
 		}
 	}
-	sortDiscovered(discovered)
-	return discovered, nil
+	sortDiscovered(out)
+	return out
 }
 
 func (s *SiteService) AddEndpoint(ctx context.Context, orgSlug string, siteID uuid.UUID, method, pathPattern string) (*models.ProtectedEndpoint, error) {
@@ -336,7 +347,7 @@ func (s *SiteService) discoverFromHTML(ctx context.Context, base *url.URL) []str
 	return paths
 }
 
-func (s *SiteService) probeEndpoint(ctx context.Context, baseURL, path string, seeded bool) (int, []string) {
+func (s *SiteService) probeEndpoint(ctx context.Context, baseURL, path string) (int, []string) {
 	url := strings.TrimRight(baseURL, "/") + path
 	status := 0
 	methods := make([]string, 0, 2)
@@ -355,7 +366,7 @@ func (s *SiteService) probeEndpoint(ctx context.Context, baseURL, path string, s
 		}
 		io.Copy(io.Discard, io.LimitReader(resp.Body, 512))
 		resp.Body.Close()
-		if isUsableStatus(resp.StatusCode, seeded) {
+		if isDiscoveredStatus(resp.StatusCode) {
 			status = resp.StatusCode
 			methods = append(methods, method)
 		}
@@ -363,14 +374,8 @@ func (s *SiteService) probeEndpoint(ctx context.Context, baseURL, path string, s
 	return status, methods
 }
 
-func isUsableStatus(status int, seeded bool) bool {
-	if status >= 200 && status < 400 {
-		return true
-	}
-	if status == 401 || status == 403 || status == 422 {
-		return true
-	}
-	return seeded && status == 405
+func isDiscoveredStatus(status int) bool {
+	return status == http.StatusOK || status == http.StatusUnauthorized || status == http.StatusForbidden
 }
 
 func normalizePath(base *url.URL, raw string) string {

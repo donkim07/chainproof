@@ -222,6 +222,11 @@ type DiscoveredEndpoint struct {
 	Priority int      `json:"priority,omitempty"`
 }
 
+type DiscoverResult struct {
+	Discovered  []DiscoveredEndpoint `json:"discovered"`
+	Suggestions []DiscoveredEndpoint `json:"suggestions,omitempty"`
+}
+
 type ProxyCaptureLog struct {
 	ID           uuid.UUID `json:"id"`
 	SiteID       uuid.UUID `json:"site_id"`

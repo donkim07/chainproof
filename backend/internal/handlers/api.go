@@ -256,7 +256,7 @@ func (h *SiteHandler) Discover(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"discovered": endpoints})
+	c.JSON(http.StatusOK, endpoints)
 }
 
 func (h *SiteHandler) ListEndpoints(c *gin.Context) {
