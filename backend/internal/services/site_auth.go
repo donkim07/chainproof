@@ -26,6 +26,11 @@ type SiteAuthSettings struct {
 	LoginURL            string            `json:"login_url,omitempty"`
 	LoginEmail          string            `json:"login_email,omitempty"`
 	LoginPassword       string            `json:"login_password,omitempty"`
+	TamperScanEnabled   bool              `json:"tamper_scan_enabled"`
+	SQLitePath          string            `json:"sqlite_path,omitempty"`
+	SQLiteTable         string            `json:"sqlite_table,omitempty"`
+	SQLiteIDColumn      string            `json:"sqlite_id_column,omitempty"`
+	RecordFetchPath     string            `json:"record_fetch_path,omitempty"`
 }
 
 type SiteAuthPublic struct {
@@ -45,6 +50,11 @@ type SiteAuthPublic struct {
 	LoginEmail          string            `json:"login_email,omitempty"`
 	LoginPasswordSet    bool              `json:"login_password_set"`
 	AutoRefreshEnabled  bool              `json:"auto_refresh_enabled"`
+	TamperScanEnabled   bool              `json:"tamper_scan_enabled"`
+	SQLitePath          string            `json:"sqlite_path,omitempty"`
+	SQLiteTable         string            `json:"sqlite_table,omitempty"`
+	SQLiteIDColumn      string            `json:"sqlite_id_column,omitempty"`
+	RecordFetchPath     string            `json:"record_fetch_path,omitempty"`
 }
 
 func (s *SiteService) loadSiteSettings(ctx context.Context, orgSlug string, siteID uuid.UUID) (map[string]interface{}, string, error) {
@@ -140,6 +150,24 @@ func (s *SiteService) UpdateAuthSettings(ctx context.Context, orgSlug string, si
 		settings["auth_login_password"] = enc
 		current.LoginPassword = req.LoginPassword
 	}
+	current.TamperScanEnabled = req.TamperScanEnabled
+	settings["tamper_scan_enabled"] = req.TamperScanEnabled
+	if req.SQLitePath != "" {
+		current.SQLitePath = req.SQLitePath
+		settings["sqlite_path"] = req.SQLitePath
+	}
+	if req.SQLiteTable != "" {
+		current.SQLiteTable = req.SQLiteTable
+		settings["sqlite_table"] = req.SQLiteTable
+	}
+	if req.SQLiteIDColumn != "" {
+		current.SQLiteIDColumn = req.SQLiteIDColumn
+		settings["sqlite_id_column"] = req.SQLiteIDColumn
+	}
+	if req.RecordFetchPath != "" {
+		current.RecordFetchPath = req.RecordFetchPath
+		settings["record_fetch_path"] = req.RecordFetchPath
+	}
 
 	b, _ := json.Marshal(settings)
 	_, err = pool.Exec(ctx, `UPDATE sites SET settings = $1, updated_at = NOW() WHERE id = $2`, b, siteID)
@@ -181,6 +209,11 @@ func parseAuthFromSettings(settings map[string]interface{}, secret string) SiteA
 			auth.LoginPassword = v
 		}
 	}
+	auth.TamperScanEnabled = boolVal(settings["tamper_scan_enabled"])
+	auth.SQLitePath = strVal(settings["sqlite_path"], "")
+	auth.SQLiteTable = strVal(settings["sqlite_table"], "")
+	auth.SQLiteIDColumn = strVal(settings["sqlite_id_column"], "")
+	auth.RecordFetchPath = strVal(settings["record_fetch_path"], "")
 	return auth
 }
 
@@ -202,6 +235,11 @@ func toPublicAuth(a SiteAuthSettings) *SiteAuthPublic {
 		LoginEmail:          a.LoginEmail,
 		LoginPasswordSet:    a.LoginPassword != "",
 		AutoRefreshEnabled:  a.LoginURL != "" && a.LoginEmail != "" && a.LoginPassword != "",
+		TamperScanEnabled:   a.TamperScanEnabled,
+		SQLitePath:          a.SQLitePath,
+		SQLiteTable:         a.SQLiteTable,
+		SQLiteIDColumn:      a.SQLiteIDColumn,
+		RecordFetchPath:     a.RecordFetchPath,
 	}
 }
 

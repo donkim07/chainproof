@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -14,11 +15,13 @@ import (
 
 type IntegrityHandler struct {
 	integrity *services.IntegrityService
+	sites     *services.SiteService
 	platform  *database.PlatformDB
+	secret    string
 }
 
-func NewIntegrityHandler(s *services.IntegrityService, platform *database.PlatformDB) *IntegrityHandler {
-	return &IntegrityHandler{integrity: s, platform: platform}
+func NewIntegrityHandler(s *services.IntegrityService, sites *services.SiteService, platform *database.PlatformDB, secret string) *IntegrityHandler {
+	return &IntegrityHandler{integrity: s, sites: sites, platform: platform, secret: secret}
 }
 
 func (h *IntegrityHandler) Anchor(c *gin.Context) {
@@ -106,6 +109,19 @@ func (h *IntegrityHandler) DashboardStats(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, stats)
+}
+
+func (h *IntegrityHandler) ScanTamper(c *gin.Context) {
+	slug, ok := requireOrgSlug(c, h.platform)
+	if !ok {
+		return
+	}
+	n, err := h.integrity.RunTamperDetect(c.Request.Context(), slug, h.sites, h.secret)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"detected": n, "message": fmt.Sprintf("scan complete — %d tampered record(s) found", n)})
 }
 
 type SiteHandler struct {

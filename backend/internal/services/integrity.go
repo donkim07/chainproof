@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/chainproof/baas/internal/blockchain"
@@ -68,6 +69,14 @@ func (s *IntegrityService) Anchor(ctx context.Context, orgSlug, actorID string, 
 	var txID *string
 	var anchoredAt *time.Time
 	meta := map[string]interface{}{}
+	payloadKeys := make([]string, 0, len(req.Payload))
+	for k := range req.Payload {
+		payloadKeys = append(payloadKeys, k)
+	}
+	sort.Strings(payloadKeys)
+	if len(payloadKeys) > 0 {
+		meta["payload_keys"] = payloadKeys
+	}
 	if anchorErr != nil {
 		status = "failed"
 		meta["blockchain_error"] = anchorErr.Error()
