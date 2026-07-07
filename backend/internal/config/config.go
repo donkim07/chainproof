@@ -36,9 +36,15 @@ func Load() (*Config, error) {
 		}
 	}
 
-	origins := []string{"http://localhost:4200"}
+	origins := []string{"http://localhost:4200", "http://127.0.0.1:4200"}
 	if v := os.Getenv("CORS_ORIGINS"); v != "" {
-		origins = strings.Split(v, ",")
+		origins = nil
+		for _, o := range strings.Split(v, ",") {
+			o = strings.TrimSpace(o)
+			if o != "" {
+				origins = append(origins, o)
+			}
+		}
 	}
 
 	return &Config{

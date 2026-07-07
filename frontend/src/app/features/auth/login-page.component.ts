@@ -30,7 +30,9 @@ import { SecureInputComponent } from '../../shared/components/secure-input/secur
                 placeholder="you@company.com" autocomplete="email" inputmode="email" />
             </div>
             <app-secure-input label="Password" [(value)]="password" autocomplete="current-password" />
-            <app-button type="submit" [fullWidth]="true" [loading]="loading">Sign In</app-button>
+            <div class="pt-3">
+              <app-button type="submit" [fullWidth]="true" [loading]="loading">Sign In</app-button>
+            </div>
           </form>
           <p class="mt-6 text-center text-sm text-slate-400">
             No account? <a routerLink="/register" class="text-brand-400 hover:underline">Create one free</a>

@@ -31,7 +31,8 @@ function loadDotEnv() {
 loadDotEnv();
 
 const isProd = process.argv.includes('--production') || process.env.NODE_ENV === 'production';
-const apiUrl = process.env.CHAINPROOF_API_URL ?? (isProd ? '' : 'http://localhost:8080');
+// Dev: empty apiUrl → same-origin requests proxied to :8080 (no CORS issues).
+const apiUrl = process.env.CHAINPROOF_API_URL ?? (isProd ? '' : '');
 
 const config = { apiUrl };
 writeFileSync(out, JSON.stringify(config, null, 2) + '\n');

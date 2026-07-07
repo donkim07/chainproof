@@ -4,13 +4,17 @@ This project was generated using [Angular CLI](https://github.com/angular/angula
 
 ## Development server
 
-To start a local development server, run:
+1. Start the ChainProof API on port `8080` (see `../backend`).
+2. Copy `.env.example` → `.env` (leave `CHAINPROOF_API_URL` empty).
+3. Run:
 
 ```bash
-ng serve
+npm start
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+`ng serve` proxies `/api` to `http://localhost:8080`, so login works without CORS issues. Open `http://localhost:4200/`.
+
+If you set `CHAINPROOF_API_URL=http://localhost:8080` instead, ensure the backend `CORS_ORIGINS` includes your frontend origin.
 
 ## Code scaffolding
 

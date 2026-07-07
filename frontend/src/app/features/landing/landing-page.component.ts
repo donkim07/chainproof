@@ -26,7 +26,7 @@ interface Plan {
     <section class="relative overflow-hidden pt-28 pb-24 lg:pt-36 lg:pb-32">
       <div class="hero-glow absolute inset-0 -z-10"></div>
       <div class="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,rgba(51,136,252,0.12),transparent_50%)]"></div>
-      <div class="mx-auto max-w-7xl px-6 text-center lg:text-left lg:grid lg:grid-cols-2 lg:items-center lg:gap-16">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 text-center lg:text-left lg:grid lg:grid-cols-2 lg:items-center lg:gap-16">
         <div class="animate-fade-in">
           <div class="mb-6 inline-flex items-center gap-2 rounded-full border border-brand-500/30 bg-brand-500/10 px-4 py-1.5 text-sm text-brand-300">
             <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse-soft"></span>
@@ -39,9 +39,13 @@ interface Plan {
           <p class="mt-6 text-lg text-slate-400 leading-relaxed max-w-xl mx-auto lg:mx-0">
             Anchor hashes when records save. Detect tampering automatically. Your users never leave your app — one API call from your backend.
           </p>
-          <div class="mt-10 flex flex-wrap justify-center lg:justify-start gap-4">
-            <a routerLink="/register"><app-button>Start free — 500 anchors/mo</app-button></a>
-            <a routerLink="/pricing"><app-button variant="secondary">View pricing</app-button></a>
+          <div class="mt-10 grid grid-cols-1 xs:grid-cols-1 sm:flex sm:flex-wrap justify-center lg:justify-start gap-3 max-w-sm sm:max-w-none mx-auto lg:mx-0">
+            <a routerLink="/register" class="block w-full sm:w-auto">
+              <app-button [fullWidth]="true">Start free — 500 anchors/mo</app-button>
+            </a>
+            <a routerLink="/pricing" class="block w-full sm:w-auto">
+              <app-button variant="secondary" [fullWidth]="true">View pricing</app-button>
+            </a>
           </div>
           <div class="mt-10 flex flex-wrap justify-center lg:justify-start gap-8 text-sm text-slate-500">
             <span>&#10003; No end-user signup</span>

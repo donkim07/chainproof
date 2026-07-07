@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { PublicNavComponent } from '../../shared/components/public-nav/public-nav.component';
 import { CodeBlockComponent } from '../../shared/components/code-block/code-block.component';
 import { ButtonComponent } from '../../shared/components/button/button.component';
@@ -9,10 +10,20 @@ import { ConfigService } from '../../core/services/config.service';
 @Component({
   selector: 'app-docs-page',
   standalone: true,
-  imports: [CommonModule, RouterLink, PublicNavComponent, CodeBlockComponent, ButtonComponent],
+  imports: [CommonModule, FormsModule, RouterLink, PublicNavComponent, CodeBlockComponent, ButtonComponent],
   template: `
     <app-public-nav />
-    <div class="mx-auto max-w-7xl px-6 py-24 flex gap-10">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 pt-20 sm:pt-24 pb-12 flex flex-col lg:flex-row gap-6 lg:gap-10">
+      <!-- Mobile / tablet section picker -->
+      <div class="lg:hidden sticky top-14 sm:top-16 z-40 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 bg-slate-950/95 backdrop-blur border-b border-slate-800">
+        <label class="sr-only">Documentation section</label>
+        <select class="input-field text-sm" [(ngModel)]="active">
+          @for (s of sections; track s.id) {
+            <option [value]="s.id">{{ s.title }}</option>
+          }
+        </select>
+      </div>
+
       <aside class="hidden lg:block w-64 shrink-0">
         <nav class="sticky top-24 space-y-1 text-sm">
           @for (s of sections; track s.id) {

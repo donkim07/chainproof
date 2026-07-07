@@ -38,7 +38,9 @@ import { SecureInputComponent } from '../../shared/components/secure-input/secur
             </div>
             <app-secure-input label="Password" [(value)]="form.password" [showStrength]="true"
               autocomplete="new-password" hint="Minimum 8 characters with mixed case recommended." />
-            <app-button type="submit" [fullWidth]="true" [loading]="loading" [disabled]="form.password.length < 8">Create Account</app-button>
+            <div class="pt-3">
+              <app-button type="submit" [fullWidth]="true" [loading]="loading" [disabled]="form.password.length < 8">Create Account</app-button>
+            </div>
           </form>
           <p class="mt-6 text-center text-sm text-slate-400">
             Already have an account? <a routerLink="/login" class="text-brand-400 hover:underline">Sign in</a>
