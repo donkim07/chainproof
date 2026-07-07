@@ -5,7 +5,6 @@ import { ApiService } from '../../core/services/api.service';
 import { ToastService } from '../../core/services/toast.service';
 import { AuthService } from '../../core/services/auth.service';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
-import { ButtonComponent } from '../../shared/components/button/button.component';
 
 interface PlatformUser {
   id: string;
@@ -19,7 +18,7 @@ interface PlatformUser {
 @Component({
   selector: 'app-platform-users-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, PageHeaderComponent, ButtonComponent],
+  imports: [CommonModule, FormsModule, PageHeaderComponent],
   template: `
     <app-page-header title="Platform Users" subtitle="All owners — impersonate to debug client issues." badge="Super Admin"></app-page-header>
     <div class="table-shell">

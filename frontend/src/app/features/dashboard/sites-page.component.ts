@@ -137,10 +137,9 @@ interface SiteAuth {
               </div>
               <div class="flex flex-wrap gap-2">
                 <app-button (click)="runDiscover()" [loading]="discovering">Discover routes</app-button>
-                <app-button variant="secondary" (click)="forceIntegrity()" [loading]="forcing">Force scan</app-button>
-                @if (selectedSite) {
-                  <a class="btn-secondary text-sm" [href]="exportUrl" target="_blank">Export CSV</a>
-                }
+                <app-button variant="secondary" (click)="forceRescan()" [loading]="forcing">Force re-scan</app-button>
+                <app-button variant="secondary" (click)="runIntegrityCheck()" [loading]="checking">Integrity check</app-button>
+                <app-button variant="secondary" (click)="exportCsv()">Export CSV</app-button>
                 <button class="btn-secondary" (click)="startEdit(selectedSite)">Edit</button>
                 <button class="btn-ghost text-rose-400" (click)="remove(selectedSite.id)">Delete</button>
               </div>
@@ -289,6 +288,7 @@ export class SitesPageComponent implements OnInit {
   creating = false;
   discovering = false;
   forcing = false;
+  checking = false;
   lastDiscovery = '—';
   manualMethod = 'GET';
   manualPath = '';
@@ -300,11 +300,6 @@ export class SitesPageComponent implements OnInit {
 
   get apiBase() {
     return this.config.apiOrigin;
-  }
-
-  get exportUrl() {
-    if (!this.selectedSite) return '#';
-    return `${this.config.apiOrigin}/api/v1/sites/${this.selectedSite.id}/export-endpoints`;
   }
 
   get envSnippet() {
@@ -419,17 +414,35 @@ CHAINPROOF_SITE_ID=${this.selectedSite.id}`;
     });
   }
 
-  forceIntegrity() {
+  forceRescan() {
     if (!this.selectedSite) return;
     this.forcing = true;
     this.api.post<{ message: string; discovered: number }>(`/api/v1/sites/${this.selectedSite.id}/force-integrity`, {}).subscribe({
       next: res => {
-        this.toast.success(res.message || `Scan complete — ${res.discovered} routes`);
+        this.toast.success(res.message || `Re-scan complete — ${res.discovered} routes`);
         this.api.get<Endpoint[]>(`/api/v1/sites/${this.selectedSite!.id}/endpoints`).subscribe(e => (this.endpoints = e));
         this.forcing = false;
       },
-      error: e => { this.toast.error(e.error?.error || 'Scan failed'); this.forcing = false; },
+      error: e => { this.toast.error(e.error?.error || 'Re-scan failed'); this.forcing = false; },
     });
+  }
+
+  runIntegrityCheck() {
+    if (!this.selectedSite) return;
+    this.checking = true;
+    this.api.post<{ message: string; verified: number; tampered: number }>('/api/v1/integrity/scan-tamper', {}).subscribe({
+      next: res => {
+        this.toast.success(res.message || `Checked — ${res.verified} verified, ${res.tampered} tampered`);
+        this.checking = false;
+      },
+      error: e => { this.toast.error(e.error?.error || 'Check failed'); this.checking = false; },
+    });
+  }
+
+  exportCsv() {
+    if (!this.selectedSite) return;
+    this.api.downloadText(`/api/v1/sites/${this.selectedSite.id}/export-endpoints`, `${this.selectedSite.name}-endpoints.csv`);
+    this.toast.success('Endpoints exported');
   }
 
   addManual() {

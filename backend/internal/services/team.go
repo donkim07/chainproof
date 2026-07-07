@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/chainproof/baas/internal/auth"
@@ -176,6 +177,32 @@ func (s *TeamService) UpdateUser(ctx context.Context, orgSlug string, userID uui
 				SELECT $1, id FROM roles WHERE name = $2
 				ON CONFLICT DO NOTHING`, userID, role)
 		}
+	}
+	return nil
+}
+
+func (s *TeamService) SetRolePermissions(ctx context.Context, orgSlug, roleName string, codes []string) error {
+	pool, _, err := s.tenant.GetPool(ctx, orgSlug)
+	if err != nil {
+		return err
+	}
+	var roleID uuid.UUID
+	err = pool.QueryRow(ctx, `SELECT id FROM roles WHERE name = $1`, roleName).Scan(&roleID)
+	if err != nil {
+		return fmt.Errorf("role not found")
+	}
+	if roleName == "admin" {
+		return fmt.Errorf("admin role permissions cannot be modified")
+	}
+	_, err = pool.Exec(ctx, `DELETE FROM role_permissions WHERE role_id = $1`, roleID)
+	if err != nil {
+		return err
+	}
+	for _, code := range codes {
+		_, _ = pool.Exec(ctx, `
+			INSERT INTO role_permissions (role_id, permission_id)
+			SELECT $1, id FROM permissions WHERE code = $2
+			ON CONFLICT DO NOTHING`, roleID, code)
 	}
 	return nil
 }

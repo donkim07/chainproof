@@ -143,6 +143,7 @@ func main() {
 			protected.GET("/team/roles", middleware.RequireTenantPermission(permSvc, "team:read"), teamHandler.ListRoles)
 			protected.GET("/team/permissions", middleware.RequireTenantPermission(permSvc, "team:read"), teamHandler.ListPermissions)
 			protected.GET("/team/roles/:role/permissions", middleware.RequireTenantPermission(permSvc, "team:read"), teamHandler.GetRolePermissions)
+			protected.PUT("/team/roles/:role/permissions", middleware.RequireTenantPermission(permSvc, "team:write"), teamHandler.UpdateRolePermissions)
 
 			protected.GET("/notifications/channels", middleware.RequireTenantPermission(permSvc, "notifications:read"), notificationHandler.List)
 			protected.POST("/notifications/channels", middleware.RequireTenantPermission(permSvc, "notifications:write"), notificationHandler.Upsert)

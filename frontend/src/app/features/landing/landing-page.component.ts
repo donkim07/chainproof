@@ -101,10 +101,8 @@ interface Plan {
         </div>
         <div class="grid gap-8 lg:grid-cols-3 max-w-5xl mx-auto">
           @for (plan of plans; track plan.slug) {
-            <div class="card relative text-left hover:-translate-y-1 transition-all duration-300 cursor-pointer"
-              [class.border-brand-500]="plan.slug === 'pro'"
-              [class.shadow-lg]="plan.slug === 'pro'"
-              [class.shadow-brand-600/15]="plan.slug === 'pro'">
+            <div class="card relative text-left hover:-translate-y-1 transition-all duration-300"
+              [ngClass]="plan.slug === 'pro' ? 'border-brand-500 shadow-lg shadow-brand-600/15' : ''">
               @if (plan.slug === 'pro') {
                 <div class="absolute -top-3 left-1/2 -translate-x-1/2 badge-info">Most popular</div>
               }
@@ -127,6 +125,21 @@ interface Plan {
           }
         </div>
         <p class="text-center mt-8"><a routerLink="/pricing" class="text-brand-400 hover:underline text-sm">Compare plans in detail →</a></p>
+      </div>
+    </section>
+
+    <!-- Comparison -->
+    <section class="py-20 border-t border-slate-800">
+      <div class="mx-auto max-w-5xl px-6">
+        <h2 class="text-2xl font-bold text-white text-center mb-10">Why teams choose ChainProof</h2>
+        <div class="grid gap-4 sm:grid-cols-2">
+          @for (row of comparison; track row.title) {
+            <div class="card hover:border-brand-500/20 transition-colors">
+              <div class="font-medium text-white">{{ row.title }}</div>
+              <p class="mt-2 text-sm text-slate-400">{{ row.desc }}</p>
+            </div>
+          }
+        </div>
       </div>
     </section>
 
@@ -172,6 +185,12 @@ export class LandingPageComponent implements OnInit {
     { icon: '&#128101;', title: 'Team & roles', desc: 'Admin, developer, viewer, security analyst — Spatie-style permissions per tenant.' },
     { icon: '&#9939;', title: 'Hyperledger Fabric', desc: 'Enterprise-grade distributed ledger — not a toy chain.' },
     { icon: '&#128273;', title: 'API keys', desc: 'Service credentials for your backend — never store end-user passwords.' },
+  ];
+  comparison = [
+    { title: 'Developer API', desc: 'Anchor hashes from your backend after each save — one HTTP call.' },
+    { title: 'Smart discovery', desc: 'OpenAPI, Swagger, ffuf, gobuster, and kiterunner route scanning.' },
+    { title: 'Team & RBAC', desc: 'Spatie-style roles and permissions for your organization.' },
+    { title: 'Tamper alerts', desc: 'Webhooks and dashboard when live data diverges from blockchain proofs.' },
   ];
   codeSample = `{
   "site_id": "YOUR_SITE_UUID",

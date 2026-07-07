@@ -4,12 +4,17 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { ToastService } from '../../core/services/toast.service';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
-import { ButtonComponent } from '../../shared/components/button/button.component';
+
+interface ScannerConfig {
+  default_rate_limit: number;
+  max_endpoints_per_scan: number;
+  scan_depth?: string;
+}
 
 @Component({
   selector: 'app-platform-settings-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, PageHeaderComponent, ButtonComponent],
+  imports: [CommonModule, FormsModule, PageHeaderComponent],
   template: `
     <app-page-header title="System &amp; Security" subtitle="Feature flags and scanner configuration." badge="Super Admin" />
     <div class="grid gap-6 lg:grid-cols-2">
@@ -42,11 +47,11 @@ import { ButtonComponent } from '../../shared/components/button/button.component
 })
 export class PlatformSettingsPageComponent implements OnInit {
   flags: Record<string, boolean> = {};
-  scannerConfig: Record<string, number | string> = { default_rate_limit: 20, max_endpoints_per_scan: 200 };
+  scannerConfig: ScannerConfig = { default_rate_limit: 20, max_endpoints_per_scan: 200 };
   constructor(private api: ApiService, private toast: ToastService) {}
   ngOnInit() {
     this.api.get<Record<string, boolean>>('/api/v1/platform/settings/feature_flags').subscribe(f => this.flags = f ?? {});
-    this.api.get<Record<string, number>>('/api/v1/platform/settings/scanner_config').subscribe(c => {
+    this.api.get<ScannerConfig>('/api/v1/platform/settings/scanner_config').subscribe(c => {
       if (c) this.scannerConfig = { ...this.scannerConfig, ...c };
     });
   }

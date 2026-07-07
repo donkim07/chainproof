@@ -41,4 +41,21 @@ export class ApiService {
   getPublic<T>(path: string): Observable<T> {
     return this.http.get<T>(`${this.base}${path}`);
   }
+
+  downloadText(path: string, filename: string): void {
+    this.http.get(`${this.base}${path}`, {
+      headers: this.headers(),
+      responseType: 'text',
+    }).subscribe({
+      next: body => {
+        const blob = new Blob([body], { type: 'text/csv;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+    });
+  }
 }

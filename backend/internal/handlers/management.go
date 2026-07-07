@@ -71,6 +71,25 @@ func (h *TeamHandler) GetRolePermissions(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"role": c.Param("role"), "permissions": codes})
 }
 
+func (h *TeamHandler) UpdateRolePermissions(c *gin.Context) {
+	slug, ok := requireOrgSlug(c, h.platform)
+	if !ok {
+		return
+	}
+	var body struct {
+		Permissions []string `json:"permissions"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := h.team.SetRolePermissions(c.Request.Context(), slug, c.Param("role"), body.Permissions); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true, "role": c.Param("role"), "permissions": body.Permissions})
+}
+
 func (h *TeamHandler) CreateUser(c *gin.Context) {
 	slug, ok := requireOrgSlug(c, h.platform)
 	if !ok {

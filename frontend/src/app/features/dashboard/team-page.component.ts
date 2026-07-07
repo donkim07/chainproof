@@ -88,7 +88,19 @@ interface Permission {
       </div>
 
       <div class="xl:col-span-2 card">
-        <h3 class="font-semibold text-white mb-3">Role permissions</h3>
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-semibold text-white">Role permissions</h3>
+          <ng-container *appCan="'team:write'">
+            @if (editingPerms) {
+              <div class="flex gap-2">
+                <button class="text-xs text-slate-400 hover:text-white" (click)="cancelEditPerms()">Cancel</button>
+                <app-button (click)="saveRolePerms()" [loading]="savingPerms">Save</app-button>
+              </div>
+            } @else if (selectedRole !== 'admin') {
+              <button class="text-xs text-brand-400 hover:underline" (click)="startEditPerms()">Edit</button>
+            }
+          </ng-container>
+        </div>
         <select class="input-field mb-4" [(ngModel)]="selectedRole" (ngModelChange)="loadRolePerms()">
           @for (r of roles; track r.id) {
             <option [value]="r.name">{{ r.name }}</option>
@@ -98,13 +110,17 @@ interface Permission {
           @for (cat of permCategories; track cat) {
             <div class="text-[10px] uppercase tracking-wider text-slate-500 mt-3 first:mt-0">{{ cat }}</div>
             @for (p of permsByCategory(cat); track p.code) {
-              <div class="flex items-start gap-2 text-sm py-1">
-                <span [class]="rolePermSet.has(p.code) ? 'text-emerald-400' : 'text-slate-600'">{{ rolePermSet.has(p.code) ? '&#10003;' : '○' }}</span>
+              <label class="flex items-start gap-2 text-sm py-1" [class.cursor-pointer]="editingPerms">
+                @if (editingPerms) {
+                  <input type="checkbox" class="mt-0.5" [checked]="editPermSet.has(p.code)" (change)="togglePerm(p.code)" />
+                } @else {
+                  <span [class]="rolePermSet.has(p.code) ? 'text-emerald-400' : 'text-slate-600'">{{ rolePermSet.has(p.code) ? '&#10003;' : '○' }}</span>
+                }
                 <div>
                   <code class="text-brand-300 text-xs">{{ p.code }}</code>
                   <p class="text-xs text-slate-500">{{ p.description }}</p>
                 </div>
-              </div>
+              </label>
             }
           }
         </div>
@@ -122,6 +138,9 @@ export class TeamPageComponent implements OnInit {
   page = 1;
   openCreate = false;
   saving = false;
+  editingPerms = false;
+  savingPerms = false;
+  editPerms: string[] = [];
   form = { full_name: '', email: '', password: '', role: 'viewer' };
 
   constructor(private api: ApiService, private toast: ToastService) {}
@@ -143,6 +162,8 @@ export class TeamPageComponent implements OnInit {
 
   get rolePermSet() { return new Set(this.rolePerms); }
 
+  get editPermSet() { return new Set(this.editPerms); }
+
   get permCategories() {
     return [...new Set(this.permissions.map(p => p.category))];
   }
@@ -161,8 +182,39 @@ export class TeamPageComponent implements OnInit {
   }
 
   loadRolePerms() {
+    this.editingPerms = false;
     this.api.get<{ permissions: string[] }>(`/api/v1/team/roles/${this.selectedRole}/permissions`)
       .subscribe(r => this.rolePerms = r.permissions ?? []);
+  }
+
+  startEditPerms() {
+    this.editPerms = [...this.rolePerms];
+    this.editingPerms = true;
+  }
+
+  cancelEditPerms() {
+    this.editingPerms = false;
+    this.editPerms = [];
+  }
+
+  togglePerm(code: string) {
+    const set = new Set(this.editPerms);
+    if (set.has(code)) set.delete(code);
+    else set.add(code);
+    this.editPerms = [...set];
+  }
+
+  saveRolePerms() {
+    this.savingPerms = true;
+    this.api.put(`/api/v1/team/roles/${this.selectedRole}/permissions`, { permissions: this.editPerms }).subscribe({
+      next: () => {
+        this.toast.success('Role permissions updated');
+        this.rolePerms = [...this.editPerms];
+        this.editingPerms = false;
+        this.savingPerms = false;
+      },
+      error: e => { this.toast.error(e.error?.error || 'Save failed'); this.savingPerms = false; },
+    });
   }
 
   createUser() {
