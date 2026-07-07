@@ -5,11 +5,12 @@ import { ApiService } from '../../core/services/api.service';
 import { ToastService } from '../../core/services/toast.service';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { ButtonComponent } from '../../shared/components/button/button.component';
+import { DataTableComponent, TableColumn } from '../../shared/components/data-table/data-table.component';
 
 @Component({
   selector: 'app-platform-wordlists-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, PageHeaderComponent, ButtonComponent],
+  imports: [CommonModule, FormsModule, PageHeaderComponent, ButtonComponent, DataTableComponent],
   template: `
     <app-page-header title="Wordlists" subtitle="Manage API discovery wordlists for ffuf, gobuster, kiterunner." badge="Super Admin" />
     <div class="card mb-6">
@@ -18,32 +19,33 @@ import { ButtonComponent } from '../../shared/components/button/button.component
       <textarea class="input-field font-mono text-xs min-h-[120px]" placeholder="/api/health&#10;/api/v1/users&#10;..." [(ngModel)]="uploadContent"></textarea>
       <app-button class="mt-3" (click)="upload()" [loading]="uploading">Upload</app-button>
     </div>
-    <div class="table-shell">
-      <table class="cp-table">
-        <thead><tr><th>Name</th><th>Version</th><th>Lines</th><th>Default</th><th>Path</th></tr></thead>
-        <tbody>
-          @for (w of wordlists; track w.id) {
-            <tr class="border-t border-ink-800">
-              <td class="text-white">{{ w.name }}</td>
-              <td>{{ w.version }}</td>
-              <td>{{ w.line_count }}</td>
-              <td>@if (w.is_default) { <span class="badge-success">yes</span> }</td>
-              <td class="font-mono text-xs text-ink-500 truncate max-w-[200px]">{{ w.path }}</td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </div>
+
+    <app-data-table
+      [columns]="columns"
+      [rows]="wordlists"
+      exportFilename="wordlists.csv"
+      [countLabel]="wordlists.length + ' wordlists'"
+      emptyTitle="No wordlists"
+      emptyIcon="file" />
   `,
 })
 export class PlatformWordlistsPageComponent implements OnInit {
-  wordlists: { id: string; name: string; version: string; line_count: number; is_default: boolean; path: string }[] = [];
+  wordlists: WordlistRow[] = [];
   uploadName = '';
   uploadContent = '';
   uploading = false;
+
+  columns: TableColumn<WordlistRow>[] = [
+    { key: 'name', label: 'Name', class: 'text-white' },
+    { key: 'version', label: 'Version' },
+    { key: 'line_count', label: 'Lines' },
+    { key: 'is_default', label: 'Default', format: r => r.is_default ? 'yes' : '' },
+    { key: 'path', label: 'Path', class: 'font-mono text-xs text-ink-500 max-w-[200px] truncate' },
+  ];
+
   constructor(private api: ApiService, private toast: ToastService) {}
   ngOnInit() { this.load(); }
-  load() { this.api.get<typeof this.wordlists>('/api/v1/platform/wordlists').subscribe(w => this.wordlists = w); }
+  load() { this.api.get<WordlistRow[]>('/api/v1/platform/wordlists').subscribe(w => this.wordlists = w); }
   upload() {
     if (!this.uploadName || !this.uploadContent.trim()) return;
     this.uploading = true;
@@ -58,4 +60,13 @@ export class PlatformWordlistsPageComponent implements OnInit {
       error: e => { this.toast.error(e.error?.error || 'Failed'); this.uploading = false; },
     });
   }
+}
+
+interface WordlistRow {
+  id: string;
+  name: string;
+  version: string;
+  line_count: number;
+  is_default: boolean;
+  path: string;
 }

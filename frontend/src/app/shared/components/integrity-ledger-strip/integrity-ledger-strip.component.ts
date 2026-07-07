@@ -44,7 +44,8 @@ const POOL = [
     </div>
   `,
   styles: [`
-    .ledger-marquee { mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+    .ledger-strip-wrap { min-width: 0; }
+    .ledger-marquee { mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent); }
     .ledger-marquee--static { mask-image: none; }
     .ledger-marquee--static .ledger-track { flex-wrap: wrap; justify-content: center; gap: 0; }
     .ledger-track { display: flex; align-items: center; width: max-content; }
@@ -81,12 +82,11 @@ export class IntegrityLedgerStripComponent implements OnInit, OnDestroy {
     this.updateDisplay();
 
     if (typeof window !== 'undefined') {
-      const el = document.createElement('div');
-      this.marquee = window.innerWidth < 900;
+      this.marquee = window.innerWidth < 1024;
       this.timer = setInterval(() => this.pushBlock(), 3200);
 
       const check = () => {
-        this.marquee = window.innerWidth < 900;
+        this.marquee = window.innerWidth < 1024;
         this.updateDisplay();
       };
       window.addEventListener('resize', check);

@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ApiService } from '../../core/services/api.service';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
+import { DataTableComponent, TableColumn } from '../../shared/components/data-table/data-table.component';
 
 interface AuditLog {
   id: string;
@@ -15,31 +16,31 @@ interface AuditLog {
 @Component({
   selector: 'app-platform-audit-page',
   standalone: true,
-  imports: [CommonModule, PageHeaderComponent],
+  imports: [CommonModule, PageHeaderComponent, DataTableComponent],
   template: `
     <app-page-header title="Audit Logs" subtitle="Platform-level actions and security events." badge="Super Admin"></app-page-header>
-    <div class="table-shell">
-      <table class="cp-table">
-        <thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Resource</th><th>IP</th></tr></thead>
-        <tbody>
-          @for (log of logs; track log.id) {
-            <tr class="border-t border-ink-800">
-              <td class="text-xs text-ink-500">{{ log.created_at | date:'medium' }}</td>
-              <td class="text-white">{{ log.actor_email }}</td>
-              <td><span class="badge-warning">{{ log.action }}</span></td>
-              <td class="text-ink-500">{{ log.resource_type || '—' }}</td>
-              <td class="font-mono text-xs text-ink-500">{{ log.ip_address || '—' }}</td>
-            </tr>
-          } @empty {
-            <tr><td colspan="5" class="py-12 text-center text-ink-500">No audit events recorded yet.</td></tr>
-          }
-        </tbody>
-      </table>
-    </div>
+
+    <app-data-table
+      [columns]="columns"
+      [rows]="logs"
+      exportFilename="audit-logs.csv"
+      [countLabel]="logs.length + ' events'"
+      emptyTitle="No audit events"
+      emptyIcon="audit" />
   `,
 })
 export class PlatformAuditPageComponent implements OnInit {
   logs: AuditLog[] = [];
+
+  columns: TableColumn<AuditLog>[] = [
+    { key: 'created_at', label: 'Time', class: 'text-xs text-ink-500',
+      format: r => new Date(r.created_at).toLocaleString() },
+    { key: 'actor_email', label: 'Actor', class: 'text-white' },
+    { key: 'action', label: 'Action' },
+    { key: 'resource_type', label: 'Resource', class: 'text-ink-500', format: r => r.resource_type || '—' },
+    { key: 'ip_address', label: 'IP', class: 'font-mono text-xs text-ink-500', format: r => r.ip_address || '—' },
+  ];
+
   constructor(private api: ApiService) {}
   ngOnInit() { this.api.get<AuditLog[]>('/api/v1/platform/audit-logs').subscribe(l => this.logs = l); }
 }

@@ -80,6 +80,8 @@ func (s *AuthService) Register(ctx context.Context, req models.RegisterRequest) 
 		return nil, fmt.Errorf("provision tenant db: %w", err)
 	}
 
+	_ = s.SendVerificationEmail(ctx, userID.String())
+
 	tenantPool, err := database.TenantPool(ctx, s.cfg.TenantDBHost, s.cfg.TenantDBPort,
 		s.cfg.TenantDBUser, s.cfg.TenantDBPassword, dbName)
 	if err == nil {
@@ -187,11 +189,11 @@ func (s *AuthService) Me(ctx context.Context, userID uuid.UUID) (*models.Platfor
 	var orgName, orgSlug string
 	err := s.db.Pool.QueryRow(ctx, `
 		SELECT u.id, u.email, u.full_name, u.role, u.organization_id,
-		       COALESCE(o.name, ''), COALESCE(o.slug, '')
+		       COALESCE(o.name, ''), COALESCE(o.slug, ''), u.email_verified
 		FROM platform_users u
 		LEFT JOIN organizations o ON o.id = u.organization_id
 		WHERE u.id = $1`, userID).Scan(&user.ID, &user.Email, &user.FullName, &user.Role,
-		&user.OrganizationID, &orgName, &orgSlug)
+		&user.OrganizationID, &orgName, &orgSlug, &user.EmailVerified)
 	if err != nil {
 		return nil, err
 	}

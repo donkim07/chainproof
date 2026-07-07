@@ -90,8 +90,8 @@ interface SiteAuth {
       </div>
     }
 
-    <div class="grid gap-6 xl:grid-cols-5 items-start">
-      <div class="table-shell xl:col-span-2 self-start sticky top-24">
+    <div class="grid gap-6 grid-cols-1 xl:grid-cols-5 items-start">
+      <div class="table-shell xl:col-span-2 self-start xl:sticky xl:top-24 order-1">
         <div class="table-toolbar">
           <input class="input-field max-w-xs" [(ngModel)]="q" placeholder="Search sites..." />
           <span class="text-sm text-ink-500">{{ filtered.length }} sites</span>
@@ -125,7 +125,7 @@ interface SiteAuth {
         }
       </div>
 
-      <div class="xl:col-span-3 space-y-4 min-w-0">
+      <div class="xl:col-span-3 space-y-4 min-w-0 order-2">
         @if (selectedSite) {
           <div class="card border-signal-500/30">
             <h3 class="text-sm font-semibold text-signal-400 mb-1">Site ID — use in your backend</h3>
@@ -242,7 +242,7 @@ interface SiteAuth {
                 <span class="text-sm font-medium text-white">Routes</span>
                 <span class="text-xs text-ink-500">{{ enabledCount }} polling enabled</span>
               </div>
-              <div class="overflow-x-auto" [class.max-h-[480px]]="endpoints.length > routesPageSize" [class.overflow-y-auto]="endpoints.length > routesPageSize">
+              <div class="overflow-x-auto">
                 <table class="cp-table">
                   <thead>
                     <tr>
@@ -287,7 +287,7 @@ interface SiteAuth {
             </div>
           </div>
         } @else {
-          <div class="card flex items-center justify-center min-h-[400px]">
+          <div class="card flex items-center justify-center py-16 xl:min-h-[280px]">
             <app-empty-state title="Select a site" description="Copy your Site ID and follow the docs to integrate." icon="arrow-right"></app-empty-state>
           </div>
         }

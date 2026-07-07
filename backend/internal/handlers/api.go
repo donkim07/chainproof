@@ -9,19 +9,22 @@ import (
 	"github.com/chainproof/baas/internal/middleware"
 	"github.com/chainproof/baas/internal/models"
 	"github.com/chainproof/baas/internal/services"
+	"github.com/chainproof/baas/internal/tenant"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
 type IntegrityHandler struct {
-	integrity *services.IntegrityService
-	sites     *services.SiteService
-	platform  *database.PlatformDB
-	secret    string
+	integrity   *services.IntegrityService
+	sites       *services.SiteService
+	platform    *database.PlatformDB
+	platformSvc *services.PlatformService
+	tenant      *tenant.Resolver
+	secret      string
 }
 
-func NewIntegrityHandler(s *services.IntegrityService, sites *services.SiteService, platform *database.PlatformDB, secret string) *IntegrityHandler {
-	return &IntegrityHandler{integrity: s, sites: sites, platform: platform, secret: secret}
+func NewIntegrityHandler(s *services.IntegrityService, sites *services.SiteService, platform *database.PlatformDB, platformSvc *services.PlatformService, tenant *tenant.Resolver, secret string) *IntegrityHandler {
+	return &IntegrityHandler{integrity: s, sites: sites, platform: platform, platformSvc: platformSvc, tenant: tenant, secret: secret}
 }
 
 func (h *IntegrityHandler) Anchor(c *gin.Context) {
@@ -33,6 +36,12 @@ func (h *IntegrityHandler) Anchor(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+	if h.platformSvc != nil && h.tenant != nil {
+		if err := h.platformSvc.EnforceAnchorLimit(c.Request.Context(), slug, h.tenant); err != nil {
+			c.JSON(http.StatusPaymentRequired, gin.H{"error": err.Error()})
+			return
+		}
 	}
 	rec, err := h.integrity.Anchor(c.Request.Context(), slug, middleware.GetActorID(c), req)
 	if err != nil {
@@ -140,11 +149,13 @@ type SiteHandler struct {
 	sites     *services.SiteService
 	integrity *services.IntegrityService
 	platform  *database.PlatformDB
+	platformSvc *services.PlatformService
+	tenant    *tenant.Resolver
 	secret    string
 }
 
-func NewSiteHandler(s *services.SiteService, integrity *services.IntegrityService, platform *database.PlatformDB, secret string) *SiteHandler {
-	return &SiteHandler{sites: s, integrity: integrity, platform: platform, secret: secret}
+func NewSiteHandler(s *services.SiteService, integrity *services.IntegrityService, platform *database.PlatformDB, platformSvc *services.PlatformService, tenant *tenant.Resolver, secret string) *SiteHandler {
+	return &SiteHandler{sites: s, integrity: integrity, platform: platform, platformSvc: platformSvc, tenant: tenant, secret: secret}
 }
 
 func (h *SiteHandler) Create(c *gin.Context) {
@@ -155,6 +166,10 @@ func (h *SiteHandler) Create(c *gin.Context) {
 	var req models.SiteUpsertRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := h.platformSvc.EnforceSiteLimit(c.Request.Context(), slug, h.tenant); err != nil {
+		c.JSON(http.StatusPaymentRequired, gin.H{"error": err.Error()})
 		return
 	}
 	created, err := h.sites.Create(c.Request.Context(), slug, models.Site{
@@ -358,6 +373,10 @@ func (h *SiteHandler) AddEndpoint(c *gin.Context) {
 	}
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := h.platformSvc.EnforceEndpointLimit(c.Request.Context(), slug, h.tenant, siteID.String()); err != nil {
+		c.JSON(http.StatusPaymentRequired, gin.H{"error": err.Error()})
 		return
 	}
 	ep, err := h.sites.AddEndpoint(c.Request.Context(), slug, siteID, body.Method, body.PathPattern)

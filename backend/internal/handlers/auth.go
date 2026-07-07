@@ -56,6 +56,7 @@ func (h *AuthHandler) Me(c *gin.Context) {
 	resp := gin.H{
 		"id": user.ID, "email": user.Email, "full_name": user.FullName,
 		"role": user.Role, "org_slug": user.OrgSlug, "org_name": user.OrgName,
+		"email_verified": user.EmailVerified,
 	}
 	if claims.OrgSlug != "" && h.perms != nil {
 		if perms, err := h.perms.UserPermissions(c.Request.Context(), claims.OrgSlug, claims.Email); err == nil {
@@ -66,4 +67,60 @@ func (h *AuthHandler) Me(c *gin.Context) {
 		resp["permissions"] = []string{"*"}
 	}
 	c.JSON(http.StatusOK, resp)
+}
+
+func (h *AuthHandler) ForgotPassword(c *gin.Context) {
+	var body struct {
+		Email string `json:"email" binding:"required,email"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	_ = h.auth.ForgotPassword(c.Request.Context(), body.Email)
+	c.JSON(http.StatusOK, gin.H{"message": "If that email exists, we sent reset instructions."})
+}
+
+func (h *AuthHandler) ResetPassword(c *gin.Context) {
+	var body struct {
+		Token       string `json:"token" binding:"required"`
+		NewPassword string `json:"new_password" binding:"required,min=8"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := h.auth.ResetPassword(c.Request.Context(), body.Token, body.NewPassword); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+func (h *AuthHandler) VerifyEmail(c *gin.Context) {
+	token := c.Query("token")
+	if token == "" {
+		var body struct {
+			Token string `json:"token" binding:"required"`
+		}
+		if err := c.ShouldBindJSON(&body); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "token required"})
+			return
+		}
+		token = body.Token
+	}
+	if err := h.auth.VerifyEmail(c.Request.Context(), token); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+func (h *AuthHandler) ResendVerification(c *gin.Context) {
+	claims := middleware.GetClaims(c)
+	if err := h.auth.SendVerificationEmail(c.Request.Context(), claims.UserID.String()); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true})
 }

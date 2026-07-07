@@ -24,6 +24,14 @@ type Config struct {
 	SeedAdminEmail    string
 	SeedAdminPassword string
 	CORSOrigins       []string
+	AppURL            string
+	MailHost          string
+	MailPort          int
+	MailUsername      string
+	MailPassword      string
+	MailFrom          string
+	MailEncryption    string
+	MailMailer        string
 }
 
 func Load() (*Config, error) {
@@ -47,6 +55,13 @@ func Load() (*Config, error) {
 		}
 	}
 
+	mailPort := 587
+	if v := os.Getenv("MAIL_PORT"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			mailPort = n
+		}
+	}
+
 	return &Config{
 		Port:              getEnv("PORT", "8080"),
 		Env:               getEnv("ENV", "development"),
@@ -63,6 +78,14 @@ func Load() (*Config, error) {
 		SeedAdminEmail:    getEnv("SEED_ADMIN_EMAIL", "admin@chainproof.io"),
 		SeedAdminPassword: getEnv("SEED_ADMIN_PASSWORD", "ChainProof2026!"),
 		CORSOrigins:       origins,
+		AppURL:            getEnv("APP_URL", "http://localhost:4200"),
+		MailHost:          getEnv("MAIL_HOST", ""),
+		MailPort:          mailPort,
+		MailUsername:      getEnv("MAIL_USERNAME", ""),
+		MailPassword:      getEnv("MAIL_PASSWORD", ""),
+		MailFrom:          getEnv("MAIL_FROM", ""),
+		MailEncryption:    getEnv("MAIL_ENCRYPTION", "tls"),
+		MailMailer:        getEnv("MAIL_MAILER", "smtp"),
 	}, nil
 }
 

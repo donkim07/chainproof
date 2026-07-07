@@ -5,17 +5,18 @@ import { ToastService } from '../../core/services/toast.service';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 import { StatCardComponent } from '../../shared/components/stat-card/stat-card.component';
 import { ButtonComponent } from '../../shared/components/button/button.component';
+import { DataTableComponent, TableColumn } from '../../shared/components/data-table/data-table.component';
 
 @Component({
   selector: 'app-platform-billing-page',
   standalone: true,
-  imports: [CommonModule, PageHeaderComponent, StatCardComponent, ButtonComponent],
+  imports: [CommonModule, PageHeaderComponent, StatCardComponent, ButtonComponent, DataTableComponent],
   template: `
     <app-page-header title="Billing &amp; Revenue" subtitle="MRR, subscriptions, quotas, and usage reports." badge="Super Admin" />
     <div class="grid gap-4 sm:grid-cols-3 mb-8">
-      <app-stat-card label="Est. MRR" [value]="mrr" color="text-signal-400" icon="&#128176;"></app-stat-card>
-      <app-stat-card label="Active subs" [value]="data?.active_subscriptions ?? '—'" color="text-signal-400" icon="&#9989;"></app-stat-card>
-      <app-stat-card label="Clients" [value]="clients.length" color="text-white" icon="&#127970;"></app-stat-card>
+      <app-stat-card label="Est. MRR" [value]="mrr" color="text-signal-400" icon="dollar" />
+      <app-stat-card label="Active subs" [value]="data?.active_subscriptions ?? '—'" color="text-signal-400" icon="check-circle" />
+      <app-stat-card label="Clients" [value]="clients.length" color="text-white" icon="building" />
     </div>
     <div class="card mb-6">
       <h3 class="font-semibold text-white mb-3">Reports &amp; exports</h3>
@@ -24,26 +25,27 @@ import { ButtonComponent } from '../../shared/components/button/button.component
         <app-button variant="secondary" (click)="exportClients()">Client billing (CSV)</app-button>
       </div>
     </div>
-    <div class="table-shell">
-      <table class="cp-table">
-        <thead><tr><th>Client</th><th>Plan</th><th>MRR</th><th>Quota</th><th>Status</th></tr></thead>
-        <tbody>
-          @for (c of clients; track c.org_slug) {
-            <tr class="border-t border-ink-800">
-              <td class="text-white">{{ c.org_name }}</td>
-              <td><span class="badge-info">{{ c.plan }}</span></td>
-              <td>{{ c.mrr === 0 ? 'Free' : '$' + c.mrr }}</td>
-              <td class="text-ink-500 text-xs">{{ quotaLabel(c.plan) }}</td>
-              <td><span class="badge-success">{{ c.status }}</span></td>
-            </tr>
-          }
-        </tbody>
-      </table>
-    </div>
+
+    <app-data-table
+      [columns]="columns"
+      [rows]="clients"
+      exportFilename="platform-billing.csv"
+      [countLabel]="clients.length + ' clients'"
+      emptyTitle="No clients"
+      emptyIcon="credit-card" />
   `,
 })
 export class PlatformBillingPageComponent implements OnInit {
-  data: { estimated_mrr?: number; active_subscriptions?: number; clients?: { org_name: string; org_slug: string; plan: string; mrr: number; status: string }[] } | null = null;
+  data: { estimated_mrr?: number; active_subscriptions?: number; clients?: ClientRow[] } | null = null;
+
+  columns: TableColumn<ClientRow>[] = [
+    { key: 'org_name', label: 'Client', class: 'text-white' },
+    { key: 'plan', label: 'Plan' },
+    { key: 'mrr', label: 'MRR', format: r => r.mrr === 0 ? 'Free' : '$' + r.mrr },
+    { key: 'org_slug', label: 'Quota', format: r => quotaLabel(r.plan) },
+    { key: 'status', label: 'Status' },
+  ];
+
   constructor(private api: ApiService, private toast: ToastService) {}
   ngOnInit() { this.api.get<typeof this.data>('/api/v1/platform/billing').subscribe(d => this.data = d); }
   get mrr() { return this.data?.estimated_mrr != null ? '$' + this.data.estimated_mrr : '—'; }
@@ -65,12 +67,21 @@ export class PlatformBillingPageComponent implements OnInit {
     a.click();
     URL.revokeObjectURL(url);
   }
-  quotaLabel(plan: string) {
-    const map: Record<string, string> = {
-      free: '1 site · 500 anchors/mo',
-      pro: '10 sites · 50k anchors/mo',
-      enterprise: 'Unlimited',
-    };
-    return map[plan] ?? plan;
-  }
+}
+
+interface ClientRow {
+  org_name: string;
+  org_slug: string;
+  plan: string;
+  mrr: number;
+  status: string;
+}
+
+function quotaLabel(plan: string) {
+  const map: Record<string, string> = {
+    free: '1 site · 500 anchors/mo',
+    pro: '10 sites · 50k anchors/mo',
+    enterprise: 'Unlimited',
+  };
+  return map[plan] ?? plan;
 }

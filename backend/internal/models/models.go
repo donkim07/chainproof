@@ -46,6 +46,7 @@ type PlatformUser struct {
 	OrganizationID *uuid.UUID `json:"organization_id,omitempty"`
 	OrgName        string     `json:"org_name,omitempty"`
 	OrgSlug        string     `json:"org_slug,omitempty"`
+	EmailVerified  bool       `json:"email_verified"`
 }
 
 type RegisterRequest struct {

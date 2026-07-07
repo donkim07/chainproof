@@ -63,16 +63,23 @@ func main() {
 	attributionSvc := services.NewAttributionService(tenantResolver)
 	platformSvc := services.NewPlatformService(platformDB)
 
+	inboxSvc := services.NewInboxService(tenantResolver)
+	searchSvc := services.NewDashboardSearchService(tenantResolver)
+	orgBillingSvc := services.NewOrgBillingService(platformDB, tenantResolver)
+
 	permSvc := services.NewPermissionService(tenantResolver)
 	platformAnalytics := services.NewPlatformAnalytics(platformDB, tenantResolver)
 	platformExtended := services.NewPlatformExtended(platformDB, tenantResolver, jwtSvc)
 
 	authHandler := handlers.NewAuthHandler(authSvc, permSvc)
-	integrityHandler := handlers.NewIntegrityHandler(integritySvc, siteSvc, platformDB, cfg.JWTSecret)
-	siteHandler := handlers.NewSiteHandler(siteSvc, integritySvc, platformDB, cfg.JWTSecret)
+	integrityHandler := handlers.NewIntegrityHandler(integritySvc, siteSvc, platformDB, platformSvc, tenantResolver, cfg.JWTSecret)
+	siteHandler := handlers.NewSiteHandler(siteSvc, integritySvc, platformDB, platformSvc, tenantResolver, cfg.JWTSecret)
 	apiKeyHandler := handlers.NewAPIKeyHandler(apiKeySvc, platformDB)
 	teamHandler := handlers.NewTeamHandler(teamSvc, platformDB)
 	notificationHandler := handlers.NewNotificationHandler(notificationSvc, platformDB)
+	inboxHandler := handlers.NewInboxHandler(inboxSvc, platformDB)
+	dashboardHandler := handlers.NewDashboardHandler(searchSvc)
+	orgBillingHandler := handlers.NewOrgBillingHandler(orgBillingSvc, platformDB)
 	attributionHandler := handlers.NewAttributionHandler(attributionSvc, platformDB)
 	proxyHandler := handlers.NewProxyHandler(siteSvc, integritySvc, platformDB, cfg.JWTSecret)
 	platformHandler := handlers.NewPlatformHandler(platformSvc, platformAnalytics, platformExtended)
@@ -103,11 +110,17 @@ func main() {
 		authRoutes.Use(middleware.RateLimit(20, time.Minute))
 		authRoutes.POST("/auth/register", authHandler.Register)
 		authRoutes.POST("/auth/login", authHandler.Login)
+		authRoutes.POST("/auth/forgot-password", authHandler.ForgotPassword)
+		authRoutes.POST("/auth/reset-password", authHandler.ResetPassword)
+		authRoutes.POST("/auth/verify-email", authHandler.VerifyEmail)
+		authRoutes.GET("/auth/verify-email", authHandler.VerifyEmail)
 
 		protected := api.Group("")
 		protected.Use(middleware.JWTAuth(jwtSvc))
 		{
 			protected.GET("/auth/me", authHandler.Me)
+			protected.POST("/auth/resend-verification", authHandler.ResendVerification)
+			protected.GET("/dashboard/search", dashboardHandler.Search)
 			protected.GET("/dashboard/stats", middleware.RequireTenantPermission(permSvc, "integrity:verify"), integrityHandler.DashboardStats)
 			protected.GET("/dashboard/analytics", middleware.RequireTenantPermission(permSvc, "integrity:verify"), siteHandler.Analytics)
 
@@ -148,6 +161,14 @@ func main() {
 			protected.GET("/notifications/channels", middleware.RequireTenantPermission(permSvc, "notifications:read"), notificationHandler.List)
 			protected.POST("/notifications/channels", middleware.RequireTenantPermission(permSvc, "notifications:write"), notificationHandler.Upsert)
 			protected.DELETE("/notifications/channels/:id", middleware.RequireTenantPermission(permSvc, "notifications:write"), notificationHandler.Delete)
+
+			protected.GET("/inbox", middleware.RequireTenantPermission(permSvc, "settings:read"), inboxHandler.List)
+			protected.GET("/inbox/unread-count", middleware.RequireTenantPermission(permSvc, "settings:read"), inboxHandler.UnreadCount)
+			protected.PATCH("/inbox/:id/read", middleware.RequireTenantPermission(permSvc, "settings:read"), inboxHandler.MarkRead)
+
+			protected.GET("/billing/overview", middleware.RequireTenantPermission(permSvc, "settings:read"), orgBillingHandler.Overview)
+			protected.GET("/billing/invoices", middleware.RequireTenantPermission(permSvc, "settings:read"), orgBillingHandler.Invoices)
+			protected.POST("/billing/change-plan", middleware.RequireTenantPermission(permSvc, "settings:write"), orgBillingHandler.ChangePlan)
 
 			protected.POST("/tampering/:id/investigate", middleware.RequireTenantPermission(permSvc, "tampering:investigate"), attributionHandler.Investigate)
 

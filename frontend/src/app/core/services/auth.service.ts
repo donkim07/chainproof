@@ -11,6 +11,7 @@ export interface AuthUser {
   role: string;
   org_slug?: string;
   org_name?: string;
+  email_verified?: boolean;
   permissions?: string[];
 }
 

@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
-import { ToastService } from '../../core/services/toast.service';
+import { AuthService } from '../../core/services/auth.service';
 import { ButtonComponent } from '../../shared/components/button/button.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
@@ -21,6 +21,14 @@ interface NotificationChannel {
   imports: [CommonModule, FormsModule, ButtonComponent, PageHeaderComponent],
   template: `
     <app-page-header title="Settings & Notifications" subtitle="Configure alert channels and proxy behavior." badge="Organization"></app-page-header>
+
+    @if (auth.user() && auth.user()!.email_verified === false) {
+      <div class="card mb-6 border-warn-500/30 bg-warn-500/5">
+        <h3 class="font-semibold text-warn-500 mb-1">Verify your email</h3>
+        <p class="text-sm text-ink-500 mb-3">You have up to 4 days to verify. Unverified accounts may lose access.</p>
+        <app-button (click)="resendVerification()" [loading]="resending">Resend verification email</app-button>
+      </div>
+    }
 
     <div class="grid gap-6 lg:grid-cols-2 items-start">
       <div class="card space-y-4">
@@ -82,8 +90,9 @@ interface NotificationChannel {
 export class SettingsPageComponent implements OnInit {
   channels: NotificationChannel[] = [];
   form = { name: '', url: '', active: true };
+  resending = false;
 
-  constructor(private api: ApiService, private toast: ToastService) {}
+  constructor(private api: ApiService, private toast: ToastService, public auth: AuthService) {}
 
   ngOnInit(): void {
     this.reload();
@@ -120,6 +129,14 @@ export class SettingsPageComponent implements OnInit {
         this.reload();
       },
       error: () => this.toast.error('Failed to delete channel'),
+    });
+  }
+
+  resendVerification() {
+    this.resending = true;
+    this.api.post('/api/v1/auth/resend-verification', {}).subscribe({
+      next: () => { this.toast.success('Verification email sent'); this.resending = false; },
+      error: e => { this.toast.error(e.error?.error || 'Failed'); this.resending = false; },
     });
   }
 }

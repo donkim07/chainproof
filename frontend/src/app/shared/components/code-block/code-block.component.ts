@@ -6,6 +6,7 @@ import { CopyButtonComponent } from '../copy-button/copy-button.component';
   selector: 'app-code-block',
   standalone: true,
   imports: [CommonModule, CopyButtonComponent],
+  host: { class: 'block my-6' },
   template: `
     <div class="relative rounded-xl border border-ink-700/80 bg-ink-950 overflow-hidden">
       @if (title) {

@@ -95,7 +95,7 @@ interface Permission {
           (pageChange)="page = $event" (pageSizeChange)="pageSize = $event; page = 1" />
       </div>
 
-      <div class="xl:col-span-2 card self-start sticky top-24">
+      <div class="xl:col-span-2 card self-start">
         <div class="flex items-center justify-between mb-3">
           <h3 class="font-semibold text-white">Role permissions</h3>
           <ng-container *appCan="'team:write'">

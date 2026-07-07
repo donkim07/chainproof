@@ -47,8 +47,12 @@ interface Incident {
       <ng-template #rowActions let-inc>
         @if (investigating.has(inc.id)) {
           <span class="text-xs text-ink-500">Updating…</span>
-        } @else if (inc.investigation_status === 'investigating' || inc.investigation_status === 'resolved') {
-          <span class="text-xs text-signal-400 capitalize">{{ inc.investigation_status }}</span>
+        } @else if (inc.investigation_status === 'investigated') {
+          <span class="inline-flex items-center gap-1 text-xs text-signal-400">
+            <span class="h-1.5 w-1.5 rounded-full bg-signal-500"></span> Investigated
+          </span>
+        } @else if (inc.investigation_status === 'investigating') {
+          <span class="text-xs text-warn-500">Investigating…</span>
         } @else {
           <button class="btn-ghost text-xs" (click)="investigate(inc)">Investigate</button>
         }
@@ -98,8 +102,8 @@ export class IncidentsPageComponent implements OnInit {
     this.investigating.add(inc.id);
     this.api.post(`/api/v1/tampering/${inc.id}/investigate`, {}).subscribe({
       next: () => {
-        inc.investigation_status = 'investigating';
-        this.toast.success('Incident marked as investigating');
+        inc.investigation_status = 'investigated';
+        this.toast.success('Incident marked as investigated');
         this.investigating.delete(inc.id);
       },
       error: e => {

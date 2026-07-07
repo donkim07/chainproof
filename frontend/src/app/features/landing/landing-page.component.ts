@@ -1,6 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, AfterViewInit, ElementRef, ViewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { gsap } from 'gsap';
 import { ButtonComponent } from '../../shared/components/button/button.component';
 import { PublicNavComponent } from '../../shared/components/public-nav/public-nav.component';
 import { AppFooterComponent } from '../../shared/components/app-footer/app-footer.component';
@@ -27,8 +28,8 @@ interface Plan {
     <app-public-nav />
 
     <section class="relative overflow-hidden pt-28 pb-24 lg:pt-36 lg:pb-32">
-      <div class="mx-auto max-w-7xl px-4 sm:px-6 text-center lg:text-left lg:grid lg:grid-cols-2 lg:items-center lg:gap-16">
-        <div>
+      <div class="mx-auto max-w-7xl px-4 sm:px-6 text-center lg:text-left lg:grid lg:grid-cols-[1fr_1.4fr] lg:items-center lg:gap-12 xl:gap-16">
+        <div #heroLeft class="hero-left">
           <div class="mb-6 inline-flex items-center gap-2 rounded-full border border-signal-500/30 bg-signal-500/10 px-4 py-1.5 text-sm text-signal-400">
             <span class="h-2 w-2 rounded-full bg-signal-400 animate-pulse-soft"></span>
             Hyperledger Fabric · Developer-first API
@@ -54,7 +55,7 @@ interface Plan {
             <span class="flex items-center gap-1.5"><app-icon name="check" size="sm" extraClass="text-signal-400" /> Tamper alerts</span>
           </div>
         </div>
-        <div class="mt-16 lg:mt-0">
+        <div class="mt-16 lg:mt-0 min-w-0" #heroRight>
           <app-fabric-network-visualizer />
           <div class="mt-4">
             <app-integrity-ledger-strip />
@@ -174,7 +175,10 @@ interface Plan {
     <app-footer />
   `,
 })
-export class LandingPageComponent implements OnInit {
+export class LandingPageComponent implements OnInit, AfterViewInit {
+  @ViewChild('heroLeft') heroLeft!: ElementRef;
+  @ViewChild('heroRight') heroRight!: ElementRef;
+
   plans: Plan[] = [
     { name: 'Free', slug: 'free', price_monthly: 0, max_sites: 1, max_endpoints: 10, max_anchors_monthly: 500, features: [] },
     { name: 'Pro', slug: 'pro', price_monthly: 49, max_sites: 10, max_endpoints: 100, max_anchors_monthly: 50000, features: [] },
@@ -211,5 +215,17 @@ export class LandingPageComponent implements OnInit {
   ngOnInit() {
     this.api.getPublic<Plan[]>('/api/v1/plans').subscribe({ next: p => { if (p?.length) this.plans = p; } });
   }
+
+  ngAfterViewInit() {
+    const reduced = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduced) return;
+    gsap.from(this.heroLeft?.nativeElement?.children || [], {
+      opacity: 0, y: 32, duration: 0.8, stagger: 0.12, ease: 'power3.out', delay: 0.1,
+    });
+    gsap.from(this.heroRight?.nativeElement || {}, {
+      opacity: 0, x: 40, scale: 0.96, duration: 1, ease: 'power3.out', delay: 0.35,
+    });
+  }
+
   fmt(n: number) { return n < 0 ? 'Unlimited' : String(n); }
 }

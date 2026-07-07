@@ -1,10 +1,12 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/services/auth.service';
 import { PermissionService } from '../../core/services/permission.service';
+import { ApiService } from '../../core/services/api.service';
+import { ToastService } from '../../core/services/toast.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
+import { DashboardSearchComponent } from '../../shared/components/dashboard-search/dashboard-search.component';
 
 interface NavItem {
   path: string;
@@ -27,7 +29,7 @@ interface NavGroup {
 @Component({
   selector: 'app-dashboard-layout',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, FormsModule, IconComponent],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, IconComponent, DashboardSearchComponent],
   template: `
     <div class="flex min-h-screen bg-ink-950">
       <aside class="sidebar-panel fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-ink-800 bg-ink-900 transition-transform duration-300 lg:translate-x-0"
@@ -50,7 +52,7 @@ interface NavGroup {
               <div class="space-y-0.5 mb-2 animate-slide-up">
                 @for (item of group.items; track item.path) {
                   @if (isItemVisible(item)) {
-                    <a [routerLink]="item.path" routerLinkActive="nav-active" [routerLinkActiveOptions]="{ exact: item.exact ?? false }" class="nav-link" (click)="closeMobile()">
+                    <a [routerLink]="item.path" routerLinkActive="nav-active" [routerLinkActiveOptions]="{ exact: item.exact ?? false }" class="nav-link" (click)="onNavClick(group.id)">
                       <app-icon [name]="item.icon" size="sm" extraClass="opacity-80" />
                       <span class="flex-1 truncate">{{ item.label }}</span>
                       @if (item.badge) { <span class="badge-info text-[10px]">{{ item.badge }}</span> }
@@ -63,14 +65,22 @@ interface NavGroup {
         </nav>
 
         <div class="shrink-0 border-t border-ink-800 p-4">
-          <div class="flex items-center gap-3 rounded-xl bg-ink-800/60 p-3">
-            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-signal-500/20 text-sm font-bold text-signal-400 ring-2 ring-signal-500/20">{{ initials }}</div>
-            <div class="min-w-0 flex-1">
-              <div class="truncate text-sm font-medium text-white">{{ auth.user()?.full_name || 'User' }}</div>
-              <div class="truncate text-xs text-ink-500">{{ auth.user()?.email }}</div>
+          <div class="flex items-center gap-2 mb-3">
+            <a routerLink="/dashboard/notifications" class="relative flex h-10 w-10 items-center justify-center rounded-xl bg-ink-800/60 text-ink-500 hover:text-signal-400 transition-colors" (click)="closeMobile()">
+              <app-icon name="bell" size="sm" />
+              @if (unreadCount > 0) {
+                <span class="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-alert-500 px-1 text-[10px] font-bold text-white">{{ unreadCount > 9 ? '9+' : unreadCount }}</span>
+              }
+            </a>
+            <div class="flex flex-1 items-center gap-3 rounded-xl bg-ink-800/60 p-3 min-w-0">
+              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-signal-500/20 text-sm font-bold text-signal-400 ring-2 ring-signal-500/20">{{ initials }}</div>
+              <div class="min-w-0 flex-1">
+                <div class="truncate text-sm font-medium text-white">{{ auth.user()?.full_name || 'User' }}</div>
+                <div class="truncate text-xs text-ink-500">{{ auth.user()?.email }}</div>
+              </div>
             </div>
           </div>
-          <button type="button" (click)="auth.logout()" class="mt-3 w-full rounded-lg py-2 text-sm text-ink-500 transition-colors hover:bg-alert-500/10 hover:text-alert-400">Sign out</button>
+          <button type="button" (click)="auth.logout()" class="w-full rounded-lg py-2 text-sm text-ink-500 transition-colors hover:bg-alert-500/10 hover:text-alert-400">Sign out</button>
         </div>
       </aside>
 
@@ -84,10 +94,9 @@ interface NavGroup {
             <app-icon name="inbox" size="md" />
           </button>
 
-          <div class="relative hidden flex-1 max-w-md md:block">
-            <app-icon name="search" size="sm" extraClass="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-500" />
-            <input class="input-field py-2 pl-10 text-sm" placeholder="Search dashboard..." [(ngModel)]="searchQ" (keydown)="onSearchKeydown($event)" />
-          </div>
+          @if (auth.hasOrganization()) {
+            <app-dashboard-search class="hidden md:flex" [hasOrg]="true" (navigated)="closeMobile()" />
+          }
 
           <div class="ml-auto flex items-center gap-2">
             @if (auth.user()?.role) {
@@ -114,8 +123,8 @@ interface NavGroup {
 })
 export class DashboardLayoutComponent implements OnInit {
   sidebarOpen = signal(false);
-  searchQ = '';
   collapsedGroups = new Set<string>();
+  unreadCount = 0;
 
   orgNavGroups: NavGroup[] = [
     {
@@ -143,7 +152,9 @@ export class DashboardLayoutComponent implements OnInit {
       orgOnly: true,
       items: [
         { path: '/dashboard/api-keys', label: 'API Keys', icon: 'key', needsOrg: true, perm: 'api_keys:read' },
+        { path: '/dashboard/billing', label: 'Billing & Plans', icon: 'credit-card', needsOrg: true, perm: 'settings:read' },
         { path: '/dashboard/team', label: 'Team & Roles', icon: 'users', needsOrg: true, perm: 'team:read' },
+        { path: '/dashboard/notifications', label: 'Notifications', icon: 'bell', needsOrg: true, perm: 'settings:read' },
         { path: '/dashboard/settings', label: 'Settings', icon: 'settings', needsOrg: true, perm: 'settings:read' },
       ],
     },
@@ -198,7 +209,13 @@ export class DashboardLayoutComponent implements OnInit {
     },
   ];
 
-  constructor(public auth: AuthService, private perms: PermissionService, private router: Router) {}
+  constructor(
+    public auth: AuthService,
+    private perms: PermissionService,
+    private router: Router,
+    private api: ApiService,
+    private toast: ToastService,
+  ) {}
 
   get shellLabel() {
     return this.auth.isSuperAdmin() && !this.auth.hasOrganization() ? 'Super Admin' : 'Owner Dashboard';
@@ -234,6 +251,13 @@ export class DashboardLayoutComponent implements OnInit {
     this.collapsedGroups = new Set(this.collapsedGroups);
   }
 
+  onNavClick(activeGroupId: string) {
+    this.collapsedGroups = new Set(
+      this.visibleGroups.map(g => g.id).filter(id => id !== activeGroupId)
+    );
+    this.closeMobile();
+  }
+
   ngOnInit() {
     const orgPaths = this.orgNavGroups.flatMap(g => g.items).filter(i => i.needsOrg).map(i => i.path);
     const onTenantRoute = orgPaths.some(p => this.router.url === p || (p !== '/dashboard' && this.router.url.startsWith(p + '/')));
@@ -241,6 +265,8 @@ export class DashboardLayoutComponent implements OnInit {
       this.router.navigate(['/dashboard/platform']);
     }
     this.initCollapsedGroups();
+    this.loadUnread();
+    this.checkEmailVerification();
   }
 
   private initCollapsedGroups() {
@@ -253,17 +279,18 @@ export class DashboardLayoutComponent implements OnInit {
     );
   }
 
-  onSearchKeydown(e: KeyboardEvent) {
-    if (e.key !== 'Enter') return;
-    const q = this.searchQ.trim().toLowerCase();
-    if (!q) return;
-    const items = this.visibleGroups.flatMap(g => g.items).filter(i => this.isItemVisible(i));
-    const match = items.find(i => i.label.toLowerCase().includes(q) || i.path.toLowerCase().includes(q));
-    if (match) {
-      this.router.navigate([match.path]);
-      this.searchQ = '';
-      this.closeMobile();
-    }
+  private loadUnread() {
+    if (!this.auth.hasOrganization()) return;
+    this.api.get<{ count: number }>('/api/v1/inbox/unread-count').subscribe({
+      next: r => this.unreadCount = r.count,
+      error: () => {},
+    });
+  }
+
+  private checkEmailVerification() {
+    const u = this.auth.user();
+    if (!u || u.email_verified !== false) return;
+    this.toast.error('Please verify your email within 4 days. Check your inbox or resend from Settings.');
   }
 
   closeMobile() { this.sidebarOpen.set(false); }

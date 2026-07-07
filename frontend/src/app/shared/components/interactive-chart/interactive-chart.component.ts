@@ -47,14 +47,16 @@ export class InteractiveChartComponent implements AfterViewInit, OnDestroy, OnCh
   @Input() height = 220;
 
   private chart?: Chart;
+  private viewReady = false;
   highlighted = -1;
   hidden = new Set<number>();
 
-  ngOnChanges(_changes: SimpleChanges) {
-    if (this.chart) this.build();
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['items'] && this.viewReady) this.build();
   }
 
   ngAfterViewInit() {
+    this.viewReady = true;
     this.build();
   }
 

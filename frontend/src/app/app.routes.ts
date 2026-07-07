@@ -25,6 +25,11 @@ import { PlatformWordlistsPageComponent } from './features/dashboard/platform-wo
 import { PlatformBillingPageComponent } from './features/dashboard/platform-billing-page.component';
 import { PlatformSettingsPageComponent } from './features/dashboard/platform-settings-page.component';
 import { authGuard, orgGuard, superAdminGuard } from './core/guards/auth.guard';
+import { ForgotPasswordPageComponent } from './features/auth/forgot-password-page.component';
+import { ResetPasswordPageComponent } from './features/auth/reset-password-page.component';
+import { VerifyEmailPageComponent } from './features/auth/verify-email-page.component';
+import { BillingPageComponent } from './features/dashboard/billing-page.component';
+import { NotificationsPageComponent } from './features/dashboard/notifications-page.component';
 
 export const routes: Routes = [
   { path: '', component: LandingPageComponent },
@@ -32,6 +37,9 @@ export const routes: Routes = [
   { path: 'docs', component: DocsPageComponent },
   { path: 'login', component: LoginPageComponent },
   { path: 'register', component: RegisterPageComponent },
+  { path: 'forgot-password', component: ForgotPasswordPageComponent },
+  { path: 'reset-password', component: ResetPasswordPageComponent },
+  { path: 'verify-email', component: VerifyEmailPageComponent },
   {
     path: 'dashboard',
     component: DashboardLayoutComponent,
@@ -43,6 +51,8 @@ export const routes: Routes = [
       { path: 'incidents', component: IncidentsPageComponent, canActivate: [orgGuard] },
       { path: 'records', component: RecordsPageComponent, canActivate: [orgGuard] },
       { path: 'api-keys', component: ApiKeysPageComponent, canActivate: [orgGuard] },
+      { path: 'billing', component: BillingPageComponent, canActivate: [orgGuard] },
+      { path: 'notifications', component: NotificationsPageComponent, canActivate: [orgGuard] },
       { path: 'team', component: TeamPageComponent, canActivate: [orgGuard] },
       { path: 'settings', component: SettingsPageComponent, canActivate: [orgGuard] },
       { path: 'platform', component: PlatformOverviewPageComponent, canActivate: [superAdminGuard] },
