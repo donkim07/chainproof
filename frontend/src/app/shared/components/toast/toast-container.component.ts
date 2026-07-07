@@ -12,7 +12,7 @@ import { ToastService } from '../../../core/services/toast.service';
     .toast-bar-paused { animation-play-state: paused !important; }
   `],
   template: `
-    <div class="fixed top-4 right-4 z-[200] flex flex-col gap-2 max-w-sm w-[min(100vw-2rem,24rem)]">
+    <div class="fixed top-16 right-4 z-[200] flex flex-col gap-2 max-w-sm w-[min(100vw-2rem,24rem)]">
       @for (toast of toastService.toasts(); track toast.id) {
         <div class="animate-slide-up relative overflow-hidden rounded-lg border shadow-xl backdrop-blur-sm"
              [class]="toastClass(toast.type)"
