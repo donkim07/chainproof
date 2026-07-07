@@ -115,7 +115,7 @@ CREATE TABLE IF NOT EXISTS sites (
     CONSTRAINT chk_integration_mode CHECK (integration_mode IN ('api', 'proxy', 'webhook'))
 );
 
-CREATE INDEX idx_sites_status ON sites(status);
+CREATE INDEX IF NOT EXISTS idx_sites_status ON sites(status);
 
 -- Protected endpoints
 CREATE TABLE IF NOT EXISTS protected_endpoints (
@@ -131,7 +131,7 @@ CREATE TABLE IF NOT EXISTS protected_endpoints (
     UNIQUE(site_id, method, path_pattern)
 );
 
-CREATE INDEX idx_endpoints_site ON protected_endpoints(site_id);
+CREATE INDEX IF NOT EXISTS idx_endpoints_site ON protected_endpoints(site_id);
 
 -- Integrity records (hashes anchored to blockchain)
 CREATE TABLE IF NOT EXISTS integrity_records (
@@ -151,8 +151,8 @@ CREATE TABLE IF NOT EXISTS integrity_records (
     UNIQUE(entity_type, entity_id, record_hash)
 );
 
-CREATE INDEX idx_integrity_entity ON integrity_records(entity_type, entity_id);
-CREATE INDEX idx_integrity_status ON integrity_records(blockchain_status);
+CREATE INDEX IF NOT EXISTS idx_integrity_entity ON integrity_records(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_integrity_status ON integrity_records(blockchain_status);
 
 -- Tampering incidents
 CREATE TABLE IF NOT EXISTS tamper_incidents (
@@ -175,8 +175,8 @@ CREATE TABLE IF NOT EXISTS tamper_incidents (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_tamper_detected ON tamper_incidents(detected_at DESC);
-CREATE INDEX idx_tamper_status ON tamper_incidents(investigation_status);
+CREATE INDEX IF NOT EXISTS idx_tamper_detected ON tamper_incidents(detected_at DESC);
+CREATE INDEX IF NOT EXISTS idx_tamper_status ON tamper_incidents(investigation_status);
 
 -- Notification settings
 CREATE TABLE IF NOT EXISTS notification_channels (

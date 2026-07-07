@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS organizations (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_organizations_slug ON organizations(slug);
+CREATE INDEX IF NOT EXISTS idx_organizations_slug ON organizations(slug);
 
 -- Platform users (owners, super admins)
 CREATE TABLE IF NOT EXISTS platform_users (
@@ -56,8 +56,8 @@ CREATE TABLE IF NOT EXISTS platform_users (
     CONSTRAINT chk_platform_role CHECK (role IN ('super_admin', 'owner', 'billing_admin'))
 );
 
-CREATE INDEX idx_platform_users_org ON platform_users(organization_id);
-CREATE INDEX idx_platform_users_email ON platform_users(email);
+CREATE INDEX IF NOT EXISTS idx_platform_users_org ON platform_users(organization_id);
+CREATE INDEX IF NOT EXISTS idx_platform_users_email ON platform_users(email);
 
 -- Platform audit log (super admin actions)
 CREATE TABLE IF NOT EXISTS platform_audit_logs (
@@ -83,4 +83,4 @@ CREATE TABLE IF NOT EXISTS usage_records (
     UNIQUE(organization_id, metric, period_start)
 );
 
-CREATE INDEX idx_usage_org_period ON usage_records(organization_id, period_start);
+CREATE INDEX IF NOT EXISTS idx_usage_org_period ON usage_records(organization_id, period_start);
