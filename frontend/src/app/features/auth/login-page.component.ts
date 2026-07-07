@@ -19,9 +19,9 @@ import { SecureInputComponent } from '../../shared/components/secure-input/secur
       <div class="w-full max-w-md">
         <div class="card glow-border">
           <div class="mb-6 text-center">
-            <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-emerald-500 text-xl font-bold shadow-lg shadow-brand-600/25">CP</div>
+            <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-signal-500 to-signal-500 text-xl font-bold shadow-lg shadow-signal-500/25">CP</div>
             <h1 class="text-2xl font-bold text-white">Welcome back</h1>
-            <p class="text-sm text-slate-400">Secure sign-in to your dashboard</p>
+            <p class="text-sm text-ink-500">Secure sign-in to your dashboard</p>
           </div>
           <form (ngSubmit)="login()" class="space-y-4" autocomplete="on">
             <div>
@@ -34,8 +34,8 @@ import { SecureInputComponent } from '../../shared/components/secure-input/secur
               <app-button type="submit" [fullWidth]="true" [loading]="loading">Sign In</app-button>
             </div>
           </form>
-          <p class="mt-6 text-center text-sm text-slate-400">
-            No account? <a routerLink="/register" class="text-brand-400 hover:underline">Create one free</a>
+          <p class="mt-6 text-center text-sm text-ink-500">
+            No account? <a routerLink="/register" class="text-signal-400 hover:underline">Create one free</a>
           </p>
         </div>
       </div>

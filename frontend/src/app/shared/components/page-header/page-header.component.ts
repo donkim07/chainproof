@@ -13,7 +13,7 @@ import { CommonModule } from '@angular/common';
         }
         <h1 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">{{ title }}</h1>
         @if (subtitle) {
-          <p class="mt-1 text-slate-400 max-w-2xl">{{ subtitle }}</p>
+          <p class="mt-1 text-ink-500 max-w-2xl">{{ subtitle }}</p>
         }
       </div>
       <div class="flex flex-wrap items-center gap-2">

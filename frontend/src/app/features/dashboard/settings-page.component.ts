@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ButtonComponent } from '../../shared/components/button/button.component';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 
 interface NotificationChannel {
   id?: string;
@@ -17,58 +18,60 @@ interface NotificationChannel {
 @Component({
   selector: 'app-settings-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, ButtonComponent],
+  imports: [CommonModule, FormsModule, ButtonComponent, PageHeaderComponent],
   template: `
-    <div class="space-y-6">
-      <div>
-        <h1 class="text-2xl font-bold text-white">Settings & Notifications</h1>
-        <p class="text-slate-400">Configure alert channels and proxy behavior.</p>
-      </div>
+    <app-page-header title="Settings & Notifications" subtitle="Configure alert channels and proxy behavior." badge="Organization"></app-page-header>
 
-      <div class="grid gap-6 lg:grid-cols-2">
-        <div class="card space-y-3">
-          <h3 class="text-lg font-semibold">Add webhook channel</h3>
-          <input class="input-field" placeholder="Name (e.g. Security Slack Hook)" [(ngModel)]="form.name" />
-          <input class="input-field" placeholder="Webhook URL" [(ngModel)]="form.url" />
-          <label class="inline-flex items-center gap-2 text-sm text-slate-300">
-            <input type="checkbox" [(ngModel)]="form.active" /> Active
-          </label>
+    <div class="grid gap-6 lg:grid-cols-2 items-start">
+      <div class="card space-y-4">
+        <h3 class="text-lg font-semibold text-white">Add webhook channel</h3>
+        <input class="input-field" placeholder="Name (e.g. Security Slack Hook)" [(ngModel)]="form.name" />
+        <input class="input-field" placeholder="Webhook URL" [(ngModel)]="form.url" />
+        <label class="inline-flex items-center gap-2 text-sm text-slate-300">
+          <input type="checkbox" [(ngModel)]="form.active" /> Active
+        </label>
+        <div class="form-actions !border-0 !pt-2 !mt-0">
           <app-button (click)="saveChannel()">Save channel</app-button>
         </div>
-
-        <div class="card">
-          <h3 class="mb-3 text-lg font-semibold">Proxy usage tip</h3>
-          <p class="text-sm text-slate-400 leading-relaxed">
-            Use proxy mode by forwarding your traffic to:
-            <code class="mx-1 rounded bg-slate-950 px-2 py-1 text-brand-300">/api/v1/proxy/&lt;siteId&gt;/...</code>.
-            ChainProof captures request/response metadata (Burp-style passive logging) while forwarding to your origin.
-          </p>
-        </div>
       </div>
 
-      <div class="card p-0 overflow-hidden">
-        <div class="border-b border-slate-800 p-4 font-medium">Notification channels</div>
-        <table class="w-full text-sm">
-          <thead class="bg-slate-800/50 text-slate-400">
+      <div class="card">
+        <h3 class="mb-3 text-lg font-semibold text-white">Proxy usage tip</h3>
+        <p class="text-sm text-ink-500 leading-relaxed">
+          Use proxy mode by forwarding your traffic to:
+          <code class="mx-1 rounded bg-ink-950 px-2 py-1 text-signal-400">/api/v1/proxy/&lt;siteId&gt;/...</code>.
+          ChainProof captures request/response metadata (Burp-style passive logging) while forwarding to your origin.
+        </p>
+      </div>
+    </div>
+
+    <div class="table-shell mt-6">
+      <div class="table-toolbar">
+        <span class="text-sm font-medium text-white">Notification channels</span>
+        <span class="text-xs text-ink-500">{{ channels.length }} configured</span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="cp-table">
+          <thead>
             <tr>
-              <th class="px-4 py-3 text-left">Name</th>
-              <th class="px-4 py-3 text-left">Type</th>
-              <th class="px-4 py-3 text-left">Status</th>
-              <th class="px-4 py-3 text-right">Actions</th>
+              <th>Name</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th class="text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
             @for (item of channels; track item.id) {
-              <tr class="border-b border-slate-800">
-                <td class="px-4 py-3 text-white">{{ item.name }}</td>
-                <td class="px-4 py-3 text-slate-300">{{ item.channel_type }}</td>
-                <td class="px-4 py-3"><span [class]="item.active ? 'badge-success' : 'badge-danger'">{{ item.active ? 'Active' : 'Disabled' }}</span></td>
-                <td class="px-4 py-3 text-right">
-                  <button class="btn-ghost text-xs text-rose-300" (click)="deleteChannel(item.id!)">Delete</button>
+              <tr class="border-t border-ink-800 hover:bg-ink-800/30">
+                <td class="text-white">{{ item.name }}</td>
+                <td class="text-ink-500">{{ item.channel_type }}</td>
+                <td><span [class]="item.active ? 'badge-success' : 'badge-danger'">{{ item.active ? 'Active' : 'Disabled' }}</span></td>
+                <td class="text-right">
+                  <button class="btn-ghost text-xs text-alert-400" (click)="deleteChannel(item.id!)">Delete</button>
                 </td>
               </tr>
             } @empty {
-              <tr><td colspan="4" class="px-4 py-8 text-center text-slate-500">No channels configured.</td></tr>
+              <tr><td colspan="4" class="py-8 text-center text-ink-500">No channels configured.</td></tr>
             }
           </tbody>
         </table>

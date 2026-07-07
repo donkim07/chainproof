@@ -23,15 +23,15 @@ interface AuditLog {
         <thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Resource</th><th>IP</th></tr></thead>
         <tbody>
           @for (log of logs; track log.id) {
-            <tr class="border-t border-slate-800">
-              <td class="text-xs text-slate-400">{{ log.created_at | date:'medium' }}</td>
+            <tr class="border-t border-ink-800">
+              <td class="text-xs text-ink-500">{{ log.created_at | date:'medium' }}</td>
               <td class="text-white">{{ log.actor_email }}</td>
               <td><span class="badge-warning">{{ log.action }}</span></td>
-              <td class="text-slate-400">{{ log.resource_type || '—' }}</td>
-              <td class="font-mono text-xs text-slate-500">{{ log.ip_address || '—' }}</td>
+              <td class="text-ink-500">{{ log.resource_type || '—' }}</td>
+              <td class="font-mono text-xs text-ink-500">{{ log.ip_address || '—' }}</td>
             </tr>
           } @empty {
-            <tr><td colspan="5" class="py-12 text-center text-slate-500">No audit events recorded yet.</td></tr>
+            <tr><td colspan="5" class="py-12 text-center text-ink-500">No audit events recorded yet.</td></tr>
           }
         </tbody>
       </table>

@@ -2,6 +2,9 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
+import { DataTableComponent, TableColumn } from '../../shared/components/data-table/data-table.component';
+import { SearchInputComponent } from '../../shared/components/search-input/search-input.component';
 
 interface RecordItem {
   id: string;
@@ -16,54 +19,37 @@ interface RecordItem {
 @Component({
   selector: 'app-records-page',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, PageHeaderComponent, DataTableComponent, SearchInputComponent],
   template: `
-    <div class="space-y-6">
-      <div>
-        <h1 class="text-2xl font-bold text-white">Anchored Records</h1>
-        <p class="text-slate-400">Blockchain hash records captured by ChainProof.</p>
-      </div>
+    <app-page-header title="Anchored Records" subtitle="Blockchain hash records captured by ChainProof." badge="Integrity"></app-page-header>
 
-      <div class="table-shell">
-        <div class="table-toolbar">
-          <input class="input-field max-w-sm" [(ngModel)]="q" placeholder="Search entity/id/hash..." />
-          <span class="text-sm text-slate-400">{{ filtered.length }} records</span>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="cp-table">
-            <thead>
-              <tr>
-                <th>Entity</th>
-                <th>Entity ID</th>
-                <th>Status</th>
-                <th>Record Hash</th>
-                <th>Created</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (r of paged(); track r.id) {
-                <tr class="border-b border-slate-800">
-                  <td class="text-white">{{ r.entity_type }}</td>
-                  <td class="font-mono text-xs text-slate-300">{{ r.entity_id }}</td>
-                  <td><span [class]="r.blockchain_status === 'submitted' ? 'badge-success' : 'badge-warning'">{{ r.blockchain_status }}</span></td>
-                  <td class="font-mono text-xs text-brand-300">{{ r.record_hash.slice(0, 20) }}...</td>
-                  <td class="text-slate-400">{{ r.created_at | date: 'medium' }}</td>
-                </tr>
-              } @empty {
-                <tr><td colspan="5" class="px-4 py-8 text-center text-slate-500">No records yet.</td></tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+    <app-data-table
+      [columns]="columns"
+      [rows]="filtered"
+      [pageSize]="pageSize"
+      exportFilename="anchored-records.csv"
+      [countLabel]="filtered.length + ' records'"
+      emptyTitle="No records yet"
+      emptyDescription="Anchors appear here after your backend calls /integrity/anchor."
+      emptyIcon="database">
+      <app-search-input search [(value)]="q" placeholder="Search entity/id/hash..." />
+    </app-data-table>
   `,
 })
 export class RecordsPageComponent implements OnInit {
   rows: RecordItem[] = [];
   q = '';
-  page = 1;
   pageSize = 10;
+
+  columns: TableColumn<RecordItem>[] = [
+    { key: 'entity_type', label: 'Entity', class: 'text-white' },
+    { key: 'entity_id', label: 'Entity ID', class: 'font-mono text-xs text-slate-300' },
+    { key: 'blockchain_status', label: 'Status' },
+    { key: 'record_hash', label: 'Record Hash', class: 'font-mono text-xs text-signal-400',
+      format: r => r.record_hash.slice(0, 20) + '...', exportFormat: r => r.record_hash },
+    { key: 'created_at', label: 'Created', class: 'text-ink-500',
+      format: r => new Date(r.created_at).toLocaleString(), exportFormat: r => r.created_at },
+  ];
 
   constructor(private api: ApiService) {}
 
@@ -75,10 +61,5 @@ export class RecordsPageComponent implements OnInit {
     const q = this.q.trim().toLowerCase();
     if (!q) return this.rows;
     return this.rows.filter(r => `${r.entity_type} ${r.entity_id} ${r.record_hash}`.toLowerCase().includes(q));
-  }
-
-  paged() {
-    const start = (this.page - 1) * this.pageSize;
-    return this.filtered.slice(start, start + this.pageSize);
   }
 }

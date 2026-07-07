@@ -152,7 +152,10 @@ func (s *TeamService) CreateUser(ctx context.Context, orgSlug string, req models
 	return nil, nil
 }
 
-func (s *TeamService) UpdateUser(ctx context.Context, orgSlug string, userID uuid.UUID, req models.TeamUserUpdateRequest) error {
+func (s *TeamService) UpdateUser(ctx context.Context, orgSlug string, userID, actorID uuid.UUID, req models.TeamUserUpdateRequest) error {
+	if req.Active != nil && !*req.Active && actorID != uuid.Nil && userID == actorID {
+		return fmt.Errorf("you cannot disable your own account")
+	}
 	pool, _, err := s.tenant.GetPool(ctx, orgSlug)
 	if err != nil {
 		return err

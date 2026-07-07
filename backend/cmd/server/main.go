@@ -161,6 +161,7 @@ func main() {
 				admin.POST("/users/:userId/impersonate", platformHandler.Impersonate)
 				admin.GET("/audit-logs", platformHandler.ListAuditLogs)
 				admin.GET("/plans", platformHandler.ListPlansAdmin)
+				admin.PATCH("/plans/:id", platformHandler.UpdatePlanAdmin)
 				admin.GET("/billing", platformHandler.BillingOverview)
 				admin.GET("/reports/usage", platformHandler.UsageReport)
 				admin.GET("/settings/:key", platformHandler.GetSettings)

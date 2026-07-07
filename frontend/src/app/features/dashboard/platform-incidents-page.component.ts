@@ -27,7 +27,7 @@ interface PlatformIncident {
     <div class="table-shell">
       <div class="table-toolbar">
         <app-search-input placeholder="Search client, entity..." [(value)]="q" />
-        <span class="text-sm text-slate-400">{{ filtered.length }} open</span>
+        <span class="text-sm text-ink-500">{{ filtered.length }} open</span>
       </div>
       <div class="overflow-x-auto">
         <table class="cp-table">
@@ -38,13 +38,13 @@ interface PlatformIncident {
           </thead>
           <tbody>
             @for (i of pageRows; track i.id) {
-              <tr class="border-t border-slate-800 hover:bg-slate-800/30 transition-colors">
+              <tr class="border-t border-ink-800 hover:bg-ink-800/30 transition-colors">
                 <td><span [class]="severityClass(i.severity)">{{ i.severity }}</span></td>
                 <td class="text-white">{{ i.org_name }}</td>
                 <td class="font-mono text-xs">{{ i.entity_type }}</td>
-                <td class="font-mono text-xs text-slate-400 max-w-[140px] truncate">{{ i.entity_id }}</td>
+                <td class="font-mono text-xs text-ink-500 max-w-[140px] truncate">{{ i.entity_id }}</td>
                 <td><span class="badge-warning">{{ i.status }}</span></td>
-                <td class="text-xs text-slate-500">{{ i.detected_at | date:'medium' }}</td>
+                <td class="text-xs text-ink-500">{{ i.detected_at | date:'medium' }}</td>
               </tr>
             } @empty {
               <tr><td colspan="6"><app-empty-state title="No open incidents" description="All clear across the platform." icon="&#9989;"></app-empty-state></td></tr>

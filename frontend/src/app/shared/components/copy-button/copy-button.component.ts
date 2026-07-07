@@ -8,8 +8,8 @@ import { ToastService } from '../../../core/services/toast.service';
   imports: [CommonModule],
   template: `
     <button type="button" (click)="copy()" [title]="label"
-      class="inline-flex items-center justify-center rounded-md p-1.5 text-slate-400 transition-colors hover:bg-slate-700 hover:text-white"
-      [class.text-emerald-400]="copied">
+      class="inline-flex items-center justify-center rounded-md p-1.5 text-ink-500 transition-colors hover:bg-ink-700 hover:text-white"
+      [class.text-signal-400]="copied">
       @if (copied) {
         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
       } @else {

@@ -9,6 +9,7 @@ import { PageHeaderComponent } from '../../shared/components/page-header/page-he
 import { StatCardComponent } from '../../shared/components/stat-card/stat-card.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 import { CopyButtonComponent } from '../../shared/components/copy-button/copy-button.component';
+import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
 import { ConfigService } from '../../core/services/config.service';
 
 interface Site {
@@ -51,7 +52,7 @@ interface SiteAuth {
 @Component({
   selector: 'app-sites-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, ButtonComponent, PageHeaderComponent, StatCardComponent, EmptyStateComponent, CopyButtonComponent],
+  imports: [CommonModule, FormsModule, RouterLink, ButtonComponent, PageHeaderComponent, StatCardComponent, EmptyStateComponent, CopyButtonComponent, PaginationComponent],
   template: `
     <app-page-header
       title="Sites"
@@ -60,10 +61,10 @@ interface SiteAuth {
       <app-button actions (click)="openCreate()">+ Add Site</app-button>
     </app-page-header>
 
-    <div class="grid gap-4 sm:grid-cols-3 mb-6">
-      <app-stat-card label="Total Sites" [value]="sites.length" color="text-brand-400" icon="&#127760;"></app-stat-card>
-      <app-stat-card label="Protected Routes" [value]="protectedCount" color="text-emerald-400" icon="&#128274;"></app-stat-card>
-      <app-stat-card label="Last Discovery" [value]="lastDiscovery" color="text-white" icon="&#128269;" [hint]="selectedSite?.name || 'Select a site'"></app-stat-card>
+    <div class="grid gap-4 sm:grid-cols-3 mb-6 items-stretch">
+      <app-stat-card label="Total Sites" [value]="sites.length" color="text-signal-400" icon="globe"></app-stat-card>
+      <app-stat-card label="Protected Routes" [value]="protectedCount" color="text-signal-400" icon="lock"></app-stat-card>
+      <app-stat-card label="Last Discovery" [value]="lastDiscovery" color="text-white" icon="search" [hint]="selectedSite?.name || 'Select a site'"></app-stat-card>
     </div>
 
     @if (showForm) {
@@ -71,15 +72,15 @@ interface SiteAuth {
         <h3 class="mb-4 font-semibold text-white">{{ editingId ? 'Edit Site' : 'Register Site' }}</h3>
         <form (ngSubmit)="saveSite()" class="grid gap-4 md:grid-cols-2">
           <div>
-            <label class="mb-1 block text-sm text-slate-400">Site Name</label>
+            <label class="mb-1 block text-sm text-ink-500">Site Name</label>
             <input class="input-field" [(ngModel)]="newSite.name" name="name" required placeholder="Production API" />
           </div>
           <div>
-            <label class="mb-1 block text-sm text-slate-400">Backend URL (public https)</label>
+            <label class="mb-1 block text-sm text-ink-500">Backend URL (public https)</label>
             <input class="input-field" [(ngModel)]="newSite.base_url" name="url" required placeholder="https://api.example.com" />
           </div>
           <div class="md:col-span-2">
-            <p class="text-xs text-slate-500">Integration is via the <a routerLink="/docs" class="text-brand-400 hover:underline">Developer API</a> — call <code class="text-brand-300">/integrity/anchor</code> from your backend after each save.</p>
+            <p class="text-xs text-ink-500">Integration is via the <a routerLink="/docs" class="text-signal-400 hover:underline">Developer API</a> — call <code class="text-signal-400">/integrity/anchor</code> from your backend after each save.</p>
           </div>
           <div class="flex items-end gap-2 md:col-span-2">
             <app-button type="submit" [loading]="creating">{{ editingId ? 'Update' : 'Create Site' }}</app-button>
@@ -89,51 +90,59 @@ interface SiteAuth {
       </div>
     }
 
-    <div class="grid gap-6 xl:grid-cols-5">
-      <div class="table-shell xl:col-span-2">
+    <div class="grid gap-6 xl:grid-cols-5 items-start">
+      <div class="table-shell xl:col-span-2 self-start sticky top-24">
         <div class="table-toolbar">
           <input class="input-field max-w-xs" [(ngModel)]="q" placeholder="Search sites..." />
-          <span class="text-sm text-slate-400">{{ filtered.length }} sites</span>
+          <span class="text-sm text-ink-500">{{ filtered.length }} sites</span>
         </div>
-        <div class="divide-y divide-slate-800 max-h-[520px] overflow-y-auto">
-          @for (site of filtered; track site.id) {
+        <div class="divide-y divide-ink-800" [class.max-h-[520px]]="pagedSites.length > 8" [class.overflow-y-auto]="pagedSites.length > 8">
+          @for (site of pagedSites; track site.id) {
             <button type="button"
-              class="w-full text-left px-4 py-4 transition-colors hover:bg-slate-800/40"
-              [ngClass]="{'bg-brand-600/10': selectedSite?.id === site.id}"
+              class="w-full text-left px-4 py-4 transition-colors hover:bg-ink-800/40"
+              [ngClass]="{'bg-signal-500/10': selectedSite?.id === site.id}"
               (click)="selectSite(site)">
               <div class="flex items-start justify-between gap-2">
                 <div>
                   <div class="font-medium text-white">{{ site.name }}</div>
-                  <div class="mt-1 font-mono text-xs text-slate-500 truncate max-w-[220px]">{{ site.base_url }}</div>
+                  <div class="mt-1 font-mono text-xs text-ink-500 truncate max-w-[220px]">{{ site.base_url }}</div>
                 </div>
               </div>
             </button>
           } @empty {
-            <app-empty-state title="No sites yet" description="Add your first backend to get a Site ID." icon="&#127760;">
+            <app-empty-state title="No sites yet" description="Add your first backend to get a Site ID." icon="globe">
               <app-button (click)="openCreate()">Add Site</app-button>
             </app-empty-state>
           }
         </div>
+        @if (filtered.length > sitesPageSize) {
+          <app-pagination
+            [page]="sitesPage"
+            [pageSize]="sitesPageSize"
+            [total]="filtered.length"
+            [showPageSize]="false"
+            (pageChange)="sitesPage = $event" />
+        }
       </div>
 
-      <div class="xl:col-span-3 space-y-4">
+      <div class="xl:col-span-3 space-y-4 min-w-0">
         @if (selectedSite) {
-          <div class="card border-brand-500/30">
-            <h3 class="text-sm font-semibold text-brand-300 mb-1">Site ID — use in your backend</h3>
-            <p class="text-xs text-slate-400 mb-3">Copy this into <code class="text-brand-300">CHAINPROOF_SITE_ID</code> or the <code class="text-brand-300">site_id</code> field when calling <code class="text-brand-300">/integrity/anchor</code>.</p>
-            <div class="flex items-center gap-2 rounded-lg bg-slate-900/80 border border-slate-700 px-3 py-2">
-              <code class="text-sm text-emerald-300 font-mono flex-1 break-all">{{ selectedSite.id }}</code>
+          <div class="card border-signal-500/30">
+            <h3 class="text-sm font-semibold text-signal-400 mb-1">Site ID — use in your backend</h3>
+            <p class="text-xs text-ink-500 mb-3">Copy this into <code class="text-signal-400">CHAINPROOF_SITE_ID</code> or the <code class="text-signal-400">site_id</code> field when calling <code class="text-signal-400">/integrity/anchor</code>.</p>
+            <div class="flex items-center gap-2 rounded-lg bg-ink-900/80 border border-ink-700 px-3 py-2">
+              <code class="text-sm text-signal-400 font-mono flex-1 break-all">{{ selectedSite.id }}</code>
               <app-copy-button [value]="selectedSite.id" label="Copy Site ID" />
             </div>
-            <pre class="mt-3 text-xs font-mono text-slate-500 bg-slate-900/50 rounded-lg p-3 overflow-x-auto">{{ envSnippet }}</pre>
-            <a routerLink="/docs" class="inline-block mt-3 text-xs text-brand-400 hover:underline">Full integration guide →</a>
+            <pre class="mt-3 text-xs font-mono text-ink-500 bg-ink-900/50 rounded-lg p-3 overflow-x-auto">{{ envSnippet }}</pre>
+            <a routerLink="/docs" class="inline-block mt-3 text-xs text-signal-400 hover:underline">Full integration guide →</a>
           </div>
 
           <div class="card">
             <div class="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 class="text-lg font-semibold text-white">{{ selectedSite.name }}</h2>
-                <p class="text-sm font-mono text-slate-400">{{ selectedSite.base_url }}</p>
+                <p class="text-sm font-mono text-ink-500">{{ selectedSite.base_url }}</p>
               </div>
               <div class="flex flex-wrap gap-2">
                 <app-button (click)="runDiscover()" [loading]="discovering">Discover routes</app-button>
@@ -141,34 +150,34 @@ interface SiteAuth {
                 <app-button variant="secondary" (click)="runIntegrityCheck()" [loading]="checking">Integrity check</app-button>
                 <app-button variant="secondary" (click)="exportCsv()">Export CSV</app-button>
                 <button class="btn-secondary" (click)="startEdit(selectedSite)">Edit</button>
-                <button class="btn-ghost text-rose-400" (click)="remove(selectedSite.id)">Delete</button>
+                <button class="btn-ghost text-alert-400" (click)="remove(selectedSite.id)">Delete</button>
               </div>
             </div>
           </div>
 
           @if (discovered.length) {
-            <div class="card border-brand-500/20 animate-slide-up">
+            <div class="card border-signal-500/20 animate-slide-up">
               <h3 class="text-sm font-semibold text-white mb-1">Discovered — {{ discovered.length }} live routes</h3>
-              <p class="text-xs text-slate-500 mb-3">From OpenAPI/Swagger, HTML, robots.txt, or JS — HTTP 200, 401, or 403 only.</p>
+              <p class="text-xs text-ink-500 mb-3">From OpenAPI/Swagger, HTML, robots.txt, or JS — HTTP 200, 401, or 403 only.</p>
               <div class="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
                 @for (d of discovered; track d.method + d.path) {
-                  <span class="rounded-lg border border-slate-700 bg-slate-900/60 px-2 py-1 text-xs font-mono">
-                    <span class="text-brand-400">{{ d.method }}</span> {{ d.path }}
-                    <span class="text-slate-500 ml-1">{{ d.status }}</span>
+                  <span class="rounded-lg border border-ink-700 bg-ink-900/60 px-2 py-1 text-xs font-mono">
+                    <span class="text-signal-400">{{ d.method }}</span> {{ d.path }}
+                    <span class="text-ink-500 ml-1">{{ d.status }}</span>
                   </span>
                 }
               </div>
             </div>
           } @else if (suggestions.length) {
-            <div class="card border-amber-500/20 animate-slide-up">
-              <h3 class="text-sm font-semibold text-amber-300 mb-1">Suggested paths — {{ suggestions.length }} (wordlist scan)</h3>
-              <p class="text-xs text-slate-500 mb-3">No OpenAPI/HTML routes found. These responded with 200, 401, or 403 from a common API wordlist — add manually if relevant.</p>
+            <div class="card border-warn-500/20 animate-slide-up">
+              <h3 class="text-sm font-semibold text-warn-500 mb-1">Suggested paths — {{ suggestions.length }} (wordlist scan)</h3>
+              <p class="text-xs text-ink-500 mb-3">No OpenAPI/HTML routes found. These responded with 200, 401, or 403 from a common API wordlist — add manually if relevant.</p>
               <div class="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
                 @for (d of suggestions; track d.method + d.path) {
-                  <button type="button" class="rounded-lg border border-slate-700 bg-slate-900/60 px-2 py-1 text-xs font-mono hover:border-brand-500/50"
+                  <button type="button" class="rounded-lg border border-ink-700 bg-ink-900/60 px-2 py-1 text-xs font-mono hover:border-signal-500/50"
                     (click)="manualPath = d.path; manualMethod = d.method">
-                    <span class="text-amber-400">{{ d.method }}</span> {{ d.path }}
-                    <span class="text-slate-500 ml-1">{{ d.status }}</span>
+                    <span class="text-warn-500">{{ d.method }}</span> {{ d.path }}
+                    <span class="text-ink-500 ml-1">{{ d.status }}</span>
                   </button>
                 }
               </div>
@@ -177,15 +186,15 @@ interface SiteAuth {
 
           <details class="card group">
             <summary class="cursor-pointer font-semibold text-white text-sm">Optional — poll static routes</summary>
-            <p class="mt-3 text-xs text-slate-400 leading-relaxed">
+            <p class="mt-3 text-xs text-ink-500 leading-relaxed">
               Only for routes <em>without</em> path params (e.g. <code class="text-slate-300">GET /api/health</code>).
               Dynamic routes like <code class="text-slate-300">/users/{{ '{' }}id{{ '}' }}</code> should use the
-              <code class="text-brand-300">verify</code> block in <code class="text-brand-300">/integrity/anchor</code> instead.
+              <code class="text-signal-400">verify</code> block in <code class="text-signal-400">/integrity/anchor</code> instead.
               Use one <strong class="text-white">service credential</strong> — not end-user logins.
             </p>
             <div class="grid gap-3 md:grid-cols-2 mt-4">
               <div>
-                <label class="text-xs text-slate-500">Service auth type</label>
+                <label class="text-xs text-ink-500">Service auth type</label>
                 <select class="input-field mt-1 text-sm" [(ngModel)]="authForm.auth_type">
                   <option value="none">None (public)</option>
                   <option value="api_key">API key header</option>
@@ -196,13 +205,13 @@ interface SiteAuth {
               </div>
               @if (authForm.auth_type === 'bearer') {
                 <div>
-                  <label class="text-xs text-slate-500">Service bearer token</label>
+                  <label class="text-xs text-ink-500">Service bearer token</label>
                   <input class="input-field mt-1 font-mono text-sm" [(ngModel)]="authForm.bearer_token" placeholder="Long-lived token from your API" />
                 </div>
               }
               @if (authForm.auth_type === 'api_key' || authForm.auth_type === 'api_key_bearer') {
-                <div><label class="text-xs text-slate-500">Header</label><input class="input-field mt-1 text-sm" [(ngModel)]="authForm.api_key_header" placeholder="X-API-Key" /></div>
-                <div><label class="text-xs text-slate-500">Key value</label><input class="input-field mt-1 font-mono text-sm" [(ngModel)]="authForm.api_key_value" /></div>
+                <div><label class="text-xs text-ink-500">Header</label><input class="input-field mt-1 text-sm" [(ngModel)]="authForm.api_key_header" placeholder="X-API-Key" /></div>
+                <div><label class="text-xs text-ink-500">Key value</label><input class="input-field mt-1 font-mono text-sm" [(ngModel)]="authForm.api_key_value" /></div>
               }
               <div class="md:col-span-2 flex flex-wrap items-center gap-4">
                 <label class="inline-flex items-center gap-2 text-sm text-slate-300">
@@ -216,24 +225,24 @@ interface SiteAuth {
           <div class="card">
             <div class="flex flex-wrap items-end gap-3 mb-4">
               <div class="flex-1 min-w-[140px]">
-                <label class="text-xs text-slate-400">Method</label>
+                <label class="text-xs text-ink-500">Method</label>
                 <select class="input-field mt-1" [(ngModel)]="manualMethod">
                   <option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option>
                 </select>
               </div>
               <div class="flex-[2] min-w-[200px]">
-                <label class="text-xs text-slate-400">Path (static routes only for polling)</label>
+                <label class="text-xs text-ink-500">Path (static routes only for polling)</label>
                 <input class="input-field mt-1 font-mono" [(ngModel)]="manualPath" placeholder="/api/health" />
               </div>
               <app-button (click)="addManual()">Add</app-button>
             </div>
 
-            <div class="table-shell p-0 border-0 shadow-none">
-              <div class="table-toolbar border-slate-800">
+            <div class="table-shell p-0 border-0 shadow-none bg-transparent">
+              <div class="table-toolbar border-ink-800">
                 <span class="text-sm font-medium text-white">Routes</span>
-                <span class="text-xs text-slate-400">{{ enabledCount }} polling enabled</span>
+                <span class="text-xs text-ink-500">{{ enabledCount }} polling enabled</span>
               </div>
-              <div class="overflow-x-auto">
+              <div class="overflow-x-auto" [class.max-h-[480px]]="endpoints.length > routesPageSize" [class.overflow-y-auto]="endpoints.length > routesPageSize">
                 <table class="cp-table">
                   <thead>
                     <tr>
@@ -244,8 +253,8 @@ interface SiteAuth {
                     </tr>
                   </thead>
                   <tbody>
-                    @for (ep of endpoints; track ep.id) {
-                      <tr class="border-t border-slate-800 hover:bg-slate-800/30">
+                    @for (ep of pagedEndpoints; track ep.id) {
+                      <tr class="border-t border-ink-800 hover:bg-ink-800/30">
                         <td><span class="badge-info font-mono">{{ ep.method }}</span></td>
                         <td class="font-mono text-xs text-slate-300">{{ ep.path_pattern }}</td>
                         <td>
@@ -255,21 +264,31 @@ interface SiteAuth {
                           </button>
                         </td>
                         <td class="text-right space-x-2">
-                          <button class="text-xs text-brand-400 hover:underline" (click)="testEp(ep)">Test</button>
-                          <button class="text-xs text-rose-400 hover:underline" (click)="deleteEp(ep.id)">Remove</button>
+                          <button class="text-xs text-signal-400 hover:underline" (click)="testEp(ep)">Test</button>
+                          <button class="text-xs text-alert-400 hover:underline" (click)="deleteEp(ep.id)">Remove</button>
                         </td>
                       </tr>
                     } @empty {
-                      <tr><td colspan="4"><app-empty-state title="No routes" description="Run discovery or add a static path." icon="&#128269;"></app-empty-state></td></tr>
+                      <tr><td colspan="4"><app-empty-state title="No routes" description="Run discovery or add a static path." icon="search"></app-empty-state></td></tr>
                     }
                   </tbody>
                 </table>
               </div>
+              @if (endpoints.length > 30) {
+                <app-pagination
+                  [page]="routesPage"
+                  [pageSize]="routesPageSize"
+                  [total]="endpoints.length"
+                  [pageSizeOptions]="[30, 50, 100]"
+                  [showPageSize]="true"
+                  (pageChange)="routesPage = $event"
+                  (pageSizeChange)="routesPageSize = $event; routesPage = 1" />
+              }
             </div>
           </div>
         } @else {
           <div class="card flex items-center justify-center min-h-[400px]">
-            <app-empty-state title="Select a site" description="Copy your Site ID and follow the docs to integrate." icon="&#128073;"></app-empty-state>
+            <app-empty-state title="Select a site" description="Copy your Site ID and follow the docs to integrate." icon="arrow-right"></app-empty-state>
           </div>
         }
       </div>
@@ -295,6 +314,10 @@ export class SitesPageComponent implements OnInit {
   newSite = { name: '', base_url: '', integration_mode: 'api' };
   authForm: SiteAuth = { auth_type: 'none', poll_enabled: false, poll_interval_minutes: 5, api_key_header: 'X-API-Key' };
   testing = false;
+  sitesPage = 1;
+  sitesPageSize = 10;
+  routesPage = 1;
+  routesPageSize = 30;
 
   constructor(private api: ApiService, private toast: ToastService, private config: ConfigService) {}
 
@@ -327,6 +350,17 @@ CHAINPROOF_SITE_ID=${this.selectedSite.id}`;
     return this.sites.filter(s => `${s.name} ${s.base_url}`.toLowerCase().includes(v));
   }
 
+  get pagedSites() {
+    if (this.filtered.length <= this.sitesPageSize) return this.filtered;
+    const start = (this.sitesPage - 1) * this.sitesPageSize;
+    return this.filtered.slice(start, start + this.sitesPageSize);
+  }
+
+  get pagedEndpoints() {
+    const start = (this.routesPage - 1) * this.routesPageSize;
+    return this.endpoints.slice(start, start + this.routesPageSize);
+  }
+
   get protectedCount() {
     return this.endpoints.filter(e => e.enabled).length;
   }
@@ -348,6 +382,7 @@ CHAINPROOF_SITE_ID=${this.selectedSite.id}`;
 
   selectSite(site: Site) {
     this.selectedSite = site;
+    this.routesPage = 1;
     this.discovered = [];
     this.suggestions = [];
     this.api.get<Endpoint[]>(`/api/v1/sites/${site.id}/endpoints`).subscribe(e => (this.endpoints = e));

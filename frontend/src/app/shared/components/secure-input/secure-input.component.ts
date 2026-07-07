@@ -23,10 +23,10 @@ import { FormsModule } from '@angular/forms';
           [attr.maxlength]="maxLength"
           [required]="required"
           [ngClass]="{
-            'border-rose-500/50': strength === 'weak' && value.length > 0,
-            'border-emerald-500/40': strength === 'strong'
+            'border-alert-500/50': strength === 'weak' && value.length > 0,
+            'border-signal-500/40': strength === 'strong'
           }" />
-        <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-slate-400 hover:text-white"
+        <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-ink-500 hover:text-white"
           (click)="visible = !visible" [attr.aria-label]="visible ? 'Hide password' : 'Show password'">
           @if (visible) {
             <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
@@ -44,15 +44,15 @@ import { FormsModule } from '@angular/forms';
         <div class="mt-2 flex gap-1">
           @for (i of [1,2,3,4]; track i) {
             <div class="h-1 flex-1 rounded-full transition-colors"
-              [class]="i <= strengthBars ? strengthColor : 'bg-slate-700'"></div>
+              [class]="i <= strengthBars ? strengthColor : 'bg-ink-700'"></div>
           }
         </div>
-        <p class="mt-1 text-xs" [class]="strength === 'strong' ? 'text-emerald-400' : strength === 'medium' ? 'text-amber-400' : 'text-slate-500'">
+        <p class="mt-1 text-xs" [class]="strength === 'strong' ? 'text-signal-400' : strength === 'medium' ? 'text-warn-500' : 'text-ink-500'">
           {{ strengthLabel }}
         </p>
       }
       @if (hint) {
-        <p class="mt-1 text-xs text-slate-500">{{ hint }}</p>
+        <p class="mt-1 text-xs text-ink-500">{{ hint }}</p>
       }
     </div>
   `,
@@ -96,7 +96,7 @@ export class SecureInputComponent {
   }
 
   get strengthColor() {
-    return { weak: 'bg-rose-500', medium: 'bg-amber-500', strong: 'bg-emerald-500' }[this.strength];
+    return { weak: 'bg-alert-500', medium: 'bg-warn-500', strong: 'bg-signal-500' }[this.strength];
   }
 
   get strengthLabel() {

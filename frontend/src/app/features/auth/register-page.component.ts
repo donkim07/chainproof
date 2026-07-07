@@ -19,9 +19,9 @@ import { SecureInputComponent } from '../../shared/components/secure-input/secur
       <div class="w-full max-w-md">
         <div class="card glow-border">
           <div class="mb-6 text-center">
-            <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-emerald-500 text-xl font-bold shadow-lg">CP</div>
+            <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-signal-500 to-signal-500 text-xl font-bold shadow-lg">CP</div>
             <h1 class="text-2xl font-bold text-white">Create your account</h1>
-            <p class="text-sm text-slate-400">Free tier — 500 anchors/month, no card required</p>
+            <p class="text-sm text-ink-500">Free tier — 500 anchors/month, no card required</p>
           </div>
           <form (ngSubmit)="register()" class="space-y-4" autocomplete="on">
             <div>
@@ -42,8 +42,8 @@ import { SecureInputComponent } from '../../shared/components/secure-input/secur
               <app-button type="submit" [fullWidth]="true" [loading]="loading" [disabled]="form.password.length < 8">Create Account</app-button>
             </div>
           </form>
-          <p class="mt-6 text-center text-sm text-slate-400">
-            Already have an account? <a routerLink="/login" class="text-brand-400 hover:underline">Sign in</a>
+          <p class="mt-6 text-center text-sm text-ink-500">
+            Already have an account? <a routerLink="/login" class="text-signal-400 hover:underline">Sign in</a>
           </p>
         </div>
       </div>

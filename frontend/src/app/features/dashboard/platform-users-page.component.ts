@@ -5,6 +5,8 @@ import { ApiService } from '../../core/services/api.service';
 import { ToastService } from '../../core/services/toast.service';
 import { AuthService } from '../../core/services/auth.service';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
+import { DataTableComponent, TableColumn } from '../../shared/components/data-table/data-table.component';
+import { SearchInputComponent } from '../../shared/components/search-input/search-input.component';
 
 interface PlatformUser {
   id: string;
@@ -18,41 +20,43 @@ interface PlatformUser {
 @Component({
   selector: 'app-platform-users-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, PageHeaderComponent],
+  imports: [CommonModule, FormsModule, PageHeaderComponent, DataTableComponent, SearchInputComponent],
   template: `
     <app-page-header title="Platform Users" subtitle="All owners — impersonate to debug client issues." badge="Super Admin"></app-page-header>
-    <div class="table-shell">
-      <div class="table-toolbar">
-        <input class="input-field max-w-xs" [(ngModel)]="q" placeholder="Search users..." />
-      </div>
-      <table class="cp-table">
-        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Organization</th><th class="text-right">Actions</th></tr></thead>
-        <tbody>
-          @for (u of filtered; track u.id) {
-            <tr class="border-t border-slate-800 hover:bg-slate-800/30">
-              <td class="text-white">{{ u.full_name }}</td>
-              <td class="text-slate-300">{{ u.email }}</td>
-              <td><span class="badge-info capitalize">{{ u.role.replace('_', ' ') }}</span></td>
-              <td class="text-slate-400">{{ u.org_name || '—' }}</td>
-              <td class="text-right">
-                @if (u.role !== 'super_admin' && u.org_slug) {
-                  <button class="text-xs text-brand-400 hover:underline" (click)="impersonate(u)">Login as</button>
-                }
-              </td>
-            </tr>
-          } @empty {
-            <tr><td colspan="5" class="py-12 text-center text-slate-500">No users.</td></tr>
-          }
-        </tbody>
-      </table>
-    </div>
+
+    <app-data-table
+      [columns]="columns"
+      [rows]="filtered"
+      [hasActions]="true"
+      exportFilename="platform-users.csv"
+      [countLabel]="filtered.length + ' users'"
+      emptyTitle="No users"
+      emptyIcon="users">
+      <app-search-input search [(value)]="q" placeholder="Search users..." />
+
+      <ng-template #rowActions let-u>
+        @if (u.role !== 'super_admin' && u.org_slug) {
+          <button class="text-xs text-signal-400 hover:underline" (click)="impersonate(u)">Login as</button>
+        }
+      </ng-template>
+    </app-data-table>
   `,
 })
 export class PlatformUsersPageComponent implements OnInit {
   users: PlatformUser[] = [];
   q = '';
+
+  columns: TableColumn<PlatformUser>[] = [
+    { key: 'full_name', label: 'Name', class: 'text-white' },
+    { key: 'email', label: 'Email', class: 'text-ink-500' },
+    { key: 'role', label: 'Role', format: r => r.role.replace('_', ' ') },
+    { key: 'org_name', label: 'Organization', class: 'text-ink-500', format: r => r.org_name || '—' },
+  ];
+
   constructor(private api: ApiService, private auth: AuthService, private toast: ToastService) {}
+
   ngOnInit() { this.api.get<PlatformUser[]>('/api/v1/platform/users').subscribe(u => this.users = u); }
+
   impersonate(u: PlatformUser) {
     if (!confirm(`Login as ${u.email}?`)) return;
     this.api.post<{ token: string }>(`/api/v1/platform/users/${u.id}/impersonate`, {}).subscribe({
@@ -66,6 +70,7 @@ export class PlatformUsersPageComponent implements OnInit {
       error: e => this.toast.error(e.error?.error || 'Impersonation failed'),
     });
   }
+
   get filtered() {
     const v = this.q.toLowerCase();
     if (!v) return this.users;

@@ -684,6 +684,25 @@ func (h *PlatformHandler) ListPlansAdmin(c *gin.Context) {
 	c.JSON(http.StatusOK, plans)
 }
 
+func (h *PlatformHandler) UpdatePlanAdmin(c *gin.Context) {
+	planID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid plan id"})
+		return
+	}
+	var req models.PlanUpdateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	plan, err := h.db.UpdatePlan(c.Request.Context(), planID, req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, plan)
+}
+
 func (h *PlatformHandler) BillingOverview(c *gin.Context) {
 	if h.extended == nil {
 		c.JSON(http.StatusOK, gin.H{})

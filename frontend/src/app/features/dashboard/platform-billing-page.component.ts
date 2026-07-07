@@ -13,8 +13,8 @@ import { ButtonComponent } from '../../shared/components/button/button.component
   template: `
     <app-page-header title="Billing &amp; Revenue" subtitle="MRR, subscriptions, quotas, and usage reports." badge="Super Admin" />
     <div class="grid gap-4 sm:grid-cols-3 mb-8">
-      <app-stat-card label="Est. MRR" [value]="mrr" color="text-emerald-400" icon="&#128176;"></app-stat-card>
-      <app-stat-card label="Active subs" [value]="data?.active_subscriptions ?? '—'" color="text-brand-400" icon="&#9989;"></app-stat-card>
+      <app-stat-card label="Est. MRR" [value]="mrr" color="text-signal-400" icon="&#128176;"></app-stat-card>
+      <app-stat-card label="Active subs" [value]="data?.active_subscriptions ?? '—'" color="text-signal-400" icon="&#9989;"></app-stat-card>
       <app-stat-card label="Clients" [value]="clients.length" color="text-white" icon="&#127970;"></app-stat-card>
     </div>
     <div class="card mb-6">
@@ -29,11 +29,11 @@ import { ButtonComponent } from '../../shared/components/button/button.component
         <thead><tr><th>Client</th><th>Plan</th><th>MRR</th><th>Quota</th><th>Status</th></tr></thead>
         <tbody>
           @for (c of clients; track c.org_slug) {
-            <tr class="border-t border-slate-800">
+            <tr class="border-t border-ink-800">
               <td class="text-white">{{ c.org_name }}</td>
               <td><span class="badge-info">{{ c.plan }}</span></td>
               <td>{{ c.mrr === 0 ? 'Free' : '$' + c.mrr }}</td>
-              <td class="text-slate-400 text-xs">{{ quotaLabel(c.plan) }}</td>
+              <td class="text-ink-500 text-xs">{{ quotaLabel(c.plan) }}</td>
               <td><span class="badge-success">{{ c.status }}</span></td>
             </tr>
           }

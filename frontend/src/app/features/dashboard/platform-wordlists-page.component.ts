@@ -23,12 +23,12 @@ import { ButtonComponent } from '../../shared/components/button/button.component
         <thead><tr><th>Name</th><th>Version</th><th>Lines</th><th>Default</th><th>Path</th></tr></thead>
         <tbody>
           @for (w of wordlists; track w.id) {
-            <tr class="border-t border-slate-800">
+            <tr class="border-t border-ink-800">
               <td class="text-white">{{ w.name }}</td>
               <td>{{ w.version }}</td>
               <td>{{ w.line_count }}</td>
               <td>@if (w.is_default) { <span class="badge-success">yes</span> }</td>
-              <td class="font-mono text-xs text-slate-500 truncate max-w-[200px]">{{ w.path }}</td>
+              <td class="font-mono text-xs text-ink-500 truncate max-w-[200px]">{{ w.path }}</td>
             </tr>
           }
         </tbody>

@@ -2,9 +2,12 @@ package services
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/chainproof/baas/internal/models"
+	"github.com/google/uuid"
 )
 
 func (s *PlatformService) ListUsers(ctx context.Context) ([]models.PlatformUser, error) {
@@ -145,4 +148,55 @@ func (s *PlatformService) Stats(ctx context.Context) (map[string]interface{}, er
 
 func (s *PlatformService) ListPlansAdmin(ctx context.Context) ([]models.Plan, error) {
 	return s.ListPlans(ctx)
+}
+
+func (s *PlatformService) UpdatePlan(ctx context.Context, planID uuid.UUID, req models.PlanUpdateRequest) (*models.Plan, error) {
+	if req.Name != nil {
+		_, err := s.db.Pool.Exec(ctx, `UPDATE plans SET name = $1 WHERE id = $2`, *req.Name, planID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if req.PriceMonthly != nil {
+		_, err := s.db.Pool.Exec(ctx, `UPDATE plans SET price_monthly = $1 WHERE id = $2`, *req.PriceMonthly, planID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if req.MaxSites != nil {
+		_, err := s.db.Pool.Exec(ctx, `UPDATE plans SET max_sites = $1 WHERE id = $2`, *req.MaxSites, planID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if req.MaxEndpoints != nil {
+		_, err := s.db.Pool.Exec(ctx, `UPDATE plans SET max_endpoints = $1 WHERE id = $2`, *req.MaxEndpoints, planID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if req.MaxAnchorsMonthly != nil {
+		_, err := s.db.Pool.Exec(ctx, `UPDATE plans SET max_anchors_monthly = $1 WHERE id = $2`, *req.MaxAnchorsMonthly, planID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	rows, err := s.db.Pool.Query(ctx, `
+		SELECT id, name, slug, price_monthly, max_sites, max_endpoints, max_anchors_monthly, features
+		FROM plans WHERE id = $1`, planID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	if !rows.Next() {
+		return nil, fmt.Errorf("plan not found")
+	}
+	var p models.Plan
+	var featuresJSON []byte
+	if err := rows.Scan(&p.ID, &p.Name, &p.Slug, &p.PriceMonthly,
+		&p.MaxSites, &p.MaxEndpoints, &p.MaxAnchorsMonthly, &featuresJSON); err != nil {
+		return nil, err
+	}
+	_ = json.Unmarshal(featuresJSON, &p.Features)
+	return &p, nil
 }

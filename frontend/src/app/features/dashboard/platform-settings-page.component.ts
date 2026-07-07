@@ -22,7 +22,7 @@ interface ScannerConfig {
         <h3 class="font-semibold text-white mb-4">Feature flags</h3>
         <div class="space-y-3">
           @for (flag of flagEntries; track flag.key) {
-            <label class="flex items-center justify-between rounded-lg border border-slate-700 px-4 py-3 cursor-pointer hover:bg-slate-800/40">
+            <label class="flex items-center justify-between rounded-lg border border-ink-700 px-4 py-3 cursor-pointer hover:bg-ink-800/40">
               <span class="text-sm text-slate-300">{{ flag.key }}</span>
               <input type="checkbox" [(ngModel)]="flag.value" (ngModelChange)="saveFlags()" />
             </label>
@@ -33,11 +33,11 @@ interface ScannerConfig {
         <h3 class="font-semibold text-white mb-4">Scanner config</h3>
         <div class="space-y-3 text-sm">
           <div>
-            <label class="text-slate-400">Rate limit (req/s)</label>
+            <label class="text-ink-500">Rate limit (req/s)</label>
             <input class="input-field mt-1" type="number" [(ngModel)]="scannerConfig.default_rate_limit" (change)="saveScanner()" />
           </div>
           <div>
-            <label class="text-slate-400">Max endpoints per scan</label>
+            <label class="text-ink-500">Max endpoints per scan</label>
             <input class="input-field mt-1" type="number" [(ngModel)]="scannerConfig.max_endpoints_per_scan" (change)="saveScanner()" />
           </div>
         </div>

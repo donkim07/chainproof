@@ -3,6 +3,9 @@ import { CommonModule } from '@angular/common';
 import { ApiService } from '../../core/services/api.service';
 import { FormsModule } from '@angular/forms';
 import { ToastService } from '../../core/services/toast.service';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
+import { DataTableComponent, TableColumn } from '../../shared/components/data-table/data-table.component';
+import { SearchInputComponent } from '../../shared/components/search-input/search-input.component';
 
 interface Incident {
   id: string;
@@ -18,79 +21,58 @@ interface Incident {
 @Component({
   selector: 'app-incidents-page',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, PageHeaderComponent, DataTableComponent, SearchInputComponent],
   template: `
-    <div class="space-y-6">
-      <div>
-        <h1 class="text-2xl font-bold text-white">Tampering Incidents</h1>
-        <p class="text-slate-400">Records that no longer match their blockchain anchors.</p>
-      </div>
+    <app-page-header title="Tampering Incidents" subtitle="Records that no longer match their blockchain anchors." badge="Security"></app-page-header>
 
-      <div class="card overflow-hidden p-0">
-        <div class="border-b border-slate-800 p-4 flex flex-wrap gap-3 items-center justify-between">
-          <input class="input-field max-w-sm" [(ngModel)]="q" placeholder="Search incidents..." />
-          <select class="input-field w-40" [(ngModel)]="severity">
-            <option value="">All severity</option>
-            <option value="critical">Critical</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </select>
-        </div>
-        <div class="overflow-x-auto">
-        <table class="w-full min-w-[960px] text-sm">
-          <thead class="border-b border-slate-700 bg-slate-800/50">
-            <tr>
-              <th class="px-4 py-3 text-left text-slate-400">Entity</th>
-              <th class="px-4 py-3 text-left text-slate-400">ID</th>
-              <th class="px-4 py-3 text-left text-slate-400">Severity</th>
-              <th class="px-4 py-3 text-left text-slate-400">Detected</th>
-              <th class="px-4 py-3 text-left text-slate-400">Status</th>
-              <th class="px-4 py-3 text-left text-slate-400">Hash</th>
-              <th class="px-4 py-3 text-right text-slate-400">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (inc of paged(); track inc.id) {
-              <tr class="border-b border-slate-800 hover:bg-rose-500/5 transition-colors">
-                <td class="px-4 py-3 font-medium text-white">{{ inc.entity_type }}</td>
-                <td class="px-4 py-3 font-mono text-xs text-slate-400">{{ inc.entity_id }}</td>
-                <td class="px-4 py-3">
-                  <span [class]="inc.severity === 'critical' ? 'badge-danger' : 'badge-warning'">{{ inc.severity }}</span>
-                </td>
-                <td class="px-4 py-3 text-slate-400">{{ inc.detected_at | date:'medium' }}</td>
-                <td class="px-4 py-3"><span class="badge-info">{{ inc.investigation_status }}</span></td>
-                <td class="px-4 py-3 font-mono text-xs text-rose-400 truncate max-w-[120px]">{{ inc.expected_hash }}</td>
-                <td class="px-4 py-3 text-right">
-                  <button class="btn-ghost text-xs" (click)="investigate(inc.id)">Investigate</button>
-                </td>
-              </tr>
-            } @empty {
-              <tr><td colspan="7" class="px-4 py-12 text-center">
-                <div class="text-emerald-400 text-lg mb-2">&#10003;</div>
-                <div class="text-slate-400">No tampering detected. All records are intact.</div>
-              </td></tr>
-            }
-          </tbody>
-        </table>
-        </div>
-        <div class="border-t border-slate-800 p-4 flex items-center justify-between text-sm">
-          <span class="text-slate-400">Page {{ page }} / {{ pages }}</span>
-          <div class="space-x-2">
-            <button class="btn-ghost" [disabled]="page===1" (click)="page = page - 1">Prev</button>
-            <button class="btn-ghost" [disabled]="page===pages" (click)="page = page + 1">Next</button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <app-data-table
+      [columns]="columns"
+      [rows]="filtered"
+      [pageSize]="pageSize"
+      [hasActions]="true"
+      exportFilename="incidents.csv"
+      [countLabel]="filtered.length + ' incidents'"
+      emptyTitle="All clear"
+      emptyDescription="No tampering detected. All records match their anchors."
+      emptyIcon="shield">
+      <app-search-input search [(value)]="q" placeholder="Search incidents..." />
+      <select toolbar class="input-field w-36 text-sm" [(ngModel)]="severity">
+        <option value="">All severity</option>
+        <option value="critical">Critical</option>
+        <option value="high">High</option>
+        <option value="medium">Medium</option>
+        <option value="low">Low</option>
+      </select>
+
+      <ng-template #rowActions let-inc>
+        @if (investigating.has(inc.id)) {
+          <span class="text-xs text-ink-500">Updating…</span>
+        } @else if (inc.investigation_status === 'investigating' || inc.investigation_status === 'resolved') {
+          <span class="text-xs text-signal-400 capitalize">{{ inc.investigation_status }}</span>
+        } @else {
+          <button class="btn-ghost text-xs" (click)="investigate(inc)">Investigate</button>
+        }
+      </ng-template>
+    </app-data-table>
   `,
 })
 export class IncidentsPageComponent implements OnInit {
   incidents: Incident[] = [];
   q = '';
   severity = '';
-  page = 1;
-  pageSize = 8;
+  pageSize = 10;
+  investigating = new Set<string>();
+
+  columns: TableColumn<Incident>[] = [
+    { key: 'entity_type', label: 'Entity', class: 'text-white font-medium' },
+    { key: 'entity_id', label: 'ID', class: 'font-mono text-xs text-ink-500' },
+    { key: 'severity', label: 'Severity' },
+    { key: 'detected_at', label: 'Detected', class: 'text-ink-500',
+      format: r => new Date(r.detected_at).toLocaleString() },
+    { key: 'investigation_status', label: 'Status' },
+    { key: 'expected_hash', label: 'Hash', class: 'font-mono text-xs text-alert-400 max-w-[120px] truncate',
+      format: r => r.expected_hash.slice(0, 16) + '...', exportFormat: r => r.expected_hash },
+  ];
 
   constructor(private api: ApiService, private toast: ToastService) {}
 
@@ -103,27 +85,27 @@ export class IncidentsPageComponent implements OnInit {
     });
   }
 
-  get pages() {
-    return Math.max(1, Math.ceil(this.filtered.length / this.pageSize));
-  }
-
-  paged() {
-    if (this.page > this.pages) this.page = this.pages;
-    const start = (this.page - 1) * this.pageSize;
-    return this.filtered.slice(start, start + this.pageSize);
-  }
-
   ngOnInit() {
+    this.reload();
+  }
+
+  reload() {
     this.api.get<Incident[]>('/api/v1/tampering').subscribe(i => this.incidents = i);
   }
 
-  investigate(id: string) {
-    this.api.post(`/api/v1/tampering/${id}/investigate`, {}).subscribe({
+  investigate(inc: Incident) {
+    if (this.investigating.has(inc.id)) return;
+    this.investigating.add(inc.id);
+    this.api.post(`/api/v1/tampering/${inc.id}/investigate`, {}).subscribe({
       next: () => {
-        this.toast.success('Incident investigated');
-        this.api.get<Incident[]>('/api/v1/tampering').subscribe(i => this.incidents = i);
+        inc.investigation_status = 'investigating';
+        this.toast.success('Incident marked as investigating');
+        this.investigating.delete(inc.id);
       },
-      error: e => this.toast.error(e.error?.error || 'Investigation failed'),
+      error: e => {
+        this.toast.error(e.error?.error || 'Investigation failed');
+        this.investigating.delete(inc.id);
+      },
     });
   }
 }

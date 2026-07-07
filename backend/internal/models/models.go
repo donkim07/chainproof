@@ -17,6 +17,14 @@ type Plan struct {
 	Features          []string  `json:"features"`
 }
 
+type PlanUpdateRequest struct {
+	Name              *string  `json:"name,omitempty"`
+	PriceMonthly      *float64 `json:"price_monthly,omitempty"`
+	MaxSites          *int     `json:"max_sites,omitempty"`
+	MaxEndpoints      *int     `json:"max_endpoints,omitempty"`
+	MaxAnchorsMonthly *int     `json:"max_anchors_monthly,omitempty"`
+}
+
 type Organization struct {
 	ID                 uuid.UUID `json:"id"`
 	Name               string    `json:"name"`

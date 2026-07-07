@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/services/auth.service';
 import { PermissionService } from '../../core/services/permission.service';
+import { IconComponent } from '../../shared/components/icon/icon.component';
 
 interface NavItem {
   path: string;
@@ -15,54 +16,61 @@ interface NavItem {
   perm?: string;
 }
 
+interface NavGroup {
+  id: string;
+  label: string;
+  items: NavItem[];
+  platformOnly?: boolean;
+  orgOnly?: boolean;
+}
+
 @Component({
   selector: 'app-dashboard-layout',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, FormsModule],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, FormsModule, IconComponent],
   template: `
-    <div class="flex min-h-screen bg-slate-950">
-      <aside class="sidebar-panel fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-slate-800/80 bg-slate-900/95 backdrop-blur-xl transition-transform duration-300 lg:translate-x-0"
+    <div class="flex min-h-screen bg-ink-950">
+      <aside class="sidebar-panel fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-ink-800 bg-ink-900 transition-transform duration-300 lg:translate-x-0"
         [class.-translate-x-full]="!sidebarOpen()" [class.translate-x-0]="sidebarOpen()">
-        <div class="flex h-16 shrink-0 items-center gap-3 border-b border-slate-800/80 px-5">
-          <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-emerald-500 text-sm font-bold shadow-lg shadow-brand-600/20">CP</div>
+        <div class="flex h-16 shrink-0 items-center gap-3 border-b border-ink-800 px-5">
+          <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-signal-500 text-sm font-bold text-white">CP</div>
           <div>
-            <div class="font-semibold text-white leading-tight">ChainProof</div>
-            <div class="text-[10px] uppercase tracking-wider text-slate-500">{{ shellLabel }}</div>
+            <div class="font-display font-semibold text-white leading-tight">ChainProof</div>
+            <div class="text-[10px] uppercase tracking-wider text-ink-500">{{ shellLabel }}</div>
           </div>
         </div>
 
         <nav class="flex-1 overflow-y-auto p-3 space-y-1">
-          @if (auth.isSuperAdmin()) {
-            <div class="nav-section-label">Platform</div>
-            @for (item of platformNav; track item.path) {
-              <a [routerLink]="item.path" routerLinkActive="nav-active" [routerLinkActiveOptions]="{ exact: item.exact ?? false }" class="nav-link" (click)="closeMobile()">
-                <span class="nav-icon" [innerHTML]="item.icon"></span>
-                <span class="flex-1">{{ item.label }}</span>
-              </a>
+          @for (group of visibleGroups; track group.id) {
+            <button type="button" class="nav-section-toggle" (click)="toggleGroup(group.id)" [attr.aria-expanded]="!collapsedGroups.has(group.id)">
+              <span class="nav-section-label flex-1 text-left">{{ group.label }}</span>
+              <app-icon [name]="collapsedGroups.has(group.id) ? 'plus' : 'check'" size="sm" extraClass="text-ink-500 opacity-60 rotate-45" />
+            </button>
+            @if (!collapsedGroups.has(group.id)) {
+              <div class="space-y-0.5 mb-2 animate-slide-up">
+                @for (item of group.items; track item.path) {
+                  @if (isItemVisible(item)) {
+                    <a [routerLink]="item.path" routerLinkActive="nav-active" [routerLinkActiveOptions]="{ exact: item.exact ?? false }" class="nav-link" (click)="closeMobile()">
+                      <app-icon [name]="item.icon" size="sm" extraClass="opacity-80" />
+                      <span class="flex-1 truncate">{{ item.label }}</span>
+                      @if (item.badge) { <span class="badge-info text-[10px]">{{ item.badge }}</span> }
+                    </a>
+                  }
+                }
+              </div>
             }
-            @if (auth.hasOrganization()) {
-              <div class="my-3 border-t border-slate-800/80"></div>
-              <div class="nav-section-label">Organization</div>
-            }
-          }
-          @for (item of visibleNav; track item.path) {
-            <a [routerLink]="item.path" routerLinkActive="nav-active" [routerLinkActiveOptions]="{ exact: item.exact ?? false }" class="nav-link" (click)="closeMobile()">
-              <span class="nav-icon" [innerHTML]="item.icon"></span>
-              <span class="flex-1">{{ item.label }}</span>
-              @if (item.badge) { <span class="badge-info text-[10px]">{{ item.badge }}</span> }
-            </a>
           }
         </nav>
 
-        <div class="shrink-0 border-t border-slate-800/80 p-4">
-          <div class="flex items-center gap-3 rounded-xl bg-slate-800/40 p-3">
-            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-600/25 text-sm font-bold text-brand-300 ring-2 ring-brand-500/20">{{ initials }}</div>
+        <div class="shrink-0 border-t border-ink-800 p-4">
+          <div class="flex items-center gap-3 rounded-xl bg-ink-800/60 p-3">
+            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-signal-500/20 text-sm font-bold text-signal-400 ring-2 ring-signal-500/20">{{ initials }}</div>
             <div class="min-w-0 flex-1">
               <div class="truncate text-sm font-medium text-white">{{ auth.user()?.full_name || 'User' }}</div>
-              <div class="truncate text-xs text-slate-500">{{ auth.user()?.email }}</div>
+              <div class="truncate text-xs text-ink-500">{{ auth.user()?.email }}</div>
             </div>
           </div>
-          <button type="button" (click)="auth.logout()" class="mt-3 w-full rounded-lg py-2 text-sm text-slate-400 transition-colors hover:bg-rose-500/10 hover:text-rose-400">Sign out</button>
+          <button type="button" (click)="auth.logout()" class="mt-3 w-full rounded-lg py-2 text-sm text-ink-500 transition-colors hover:bg-alert-500/10 hover:text-alert-400">Sign out</button>
         </div>
       </aside>
 
@@ -71,14 +79,14 @@ interface NavItem {
       }
 
       <div class="flex min-w-0 flex-1 flex-col lg:pl-64">
-        <header class="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-slate-800/80 bg-slate-950/90 px-4 backdrop-blur-xl sm:gap-4 sm:px-6">
-          <button type="button" class="rounded-lg p-2 text-slate-400 hover:bg-slate-800 lg:hidden" (click)="sidebarOpen.set(!sidebarOpen())" aria-label="Menu">
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        <header class="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-ink-800 bg-ink-950/90 px-4 backdrop-blur-xl sm:gap-4 sm:px-6">
+          <button type="button" class="rounded-lg p-2 text-ink-500 hover:bg-ink-800 lg:hidden" (click)="sidebarOpen.set(!sidebarOpen())" aria-label="Menu">
+            <app-icon name="inbox" size="md" />
           </button>
 
           <div class="relative hidden flex-1 max-w-md md:block">
-            <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-width="2" d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z"/></svg>
-            <input class="input-field py-2 pl-10 text-sm" placeholder="Search dashboard..." [(ngModel)]="searchQ" />
+            <app-icon name="search" size="sm" extraClass="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-500" />
+            <input class="input-field py-2 pl-10 text-sm" placeholder="Search dashboard..." [(ngModel)]="searchQ" (keydown)="onSearchKeydown($event)" />
           </div>
 
           <div class="ml-auto flex items-center gap-2">
@@ -97,40 +105,97 @@ interface NavItem {
     </div>
   `,
   styles: [`
-    .nav-section-label { @apply px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500; }
-    .nav-link { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-400 transition-all duration-200 hover:bg-slate-800/80 hover:text-white; }
-    .nav-active { @apply bg-brand-600/15 text-brand-300 shadow-inner ring-1 ring-brand-500/20; }
-    .nav-icon { @apply w-5 text-center text-base opacity-80; }
+    .nav-section-label { @apply text-[10px] font-semibold uppercase tracking-wider text-ink-500; }
+    .nav-section-toggle { @apply flex w-full items-center gap-2 rounded-lg px-3 py-2 transition-colors hover:bg-ink-800/50; }
+    .nav-link { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-ink-500 transition-all duration-200 hover:bg-ink-800 hover:text-white border-l-2 border-transparent; }
+    .nav-active { @apply bg-signal-500/15 text-signal-400 border-signal-500 shadow-inner; }
     .sidebar-panel { box-shadow: 4px 0 24px rgba(0,0,0,0.25); }
   `],
 })
 export class DashboardLayoutComponent implements OnInit {
   sidebarOpen = signal(false);
   searchQ = '';
+  collapsedGroups = new Set<string>();
 
-  navItems: NavItem[] = [
-    { path: '/dashboard', label: 'Overview', icon: '&#9632;', needsOrg: true, exact: true },
-    { path: '/dashboard/analytics', label: 'Analytics', icon: '&#128200;', needsOrg: true, perm: 'integrity:verify' },
-    { path: '/dashboard/sites', label: 'Sites', icon: '&#127760;', needsOrg: true, badge: 'Core', perm: 'sites:read' },
-    { path: '/dashboard/incidents', label: 'Tampering', icon: '&#9888;', needsOrg: true, perm: 'tampering:read' },
-    { path: '/dashboard/records', label: 'Records', icon: '&#128274;', needsOrg: true, perm: 'integrity:verify' },
-    { path: '/dashboard/api-keys', label: 'API Keys', icon: '&#128273;', needsOrg: true, perm: 'api_keys:read' },
-    { path: '/dashboard/team', label: 'Team', icon: '&#128101;', needsOrg: true, perm: 'team:read' },
-    { path: '/dashboard/settings', label: 'Settings', icon: '&#9881;', needsOrg: true, perm: 'settings:read' },
+  orgNavGroups: NavGroup[] = [
+    {
+      id: 'overview',
+      label: 'Overview',
+      orgOnly: true,
+      items: [
+        { path: '/dashboard', label: 'Dashboard', icon: 'home', needsOrg: true, exact: true },
+        { path: '/dashboard/analytics', label: 'Analytics', icon: 'chart', needsOrg: true, perm: 'integrity:verify' },
+      ],
+    },
+    {
+      id: 'sites',
+      label: 'Sites & Endpoints',
+      orgOnly: true,
+      items: [
+        { path: '/dashboard/sites', label: 'All Sites', icon: 'globe', needsOrg: true, badge: 'Core', perm: 'sites:read' },
+        { path: '/dashboard/incidents', label: 'Incidents', icon: 'alert', needsOrg: true, perm: 'tampering:read' },
+        { path: '/dashboard/records', label: 'Anchored Records', icon: 'database', needsOrg: true, perm: 'integrity:verify' },
+      ],
+    },
+    {
+      id: 'access',
+      label: 'Access & Billing',
+      orgOnly: true,
+      items: [
+        { path: '/dashboard/api-keys', label: 'API Keys', icon: 'key', needsOrg: true, perm: 'api_keys:read' },
+        { path: '/dashboard/team', label: 'Team & Roles', icon: 'users', needsOrg: true, perm: 'team:read' },
+        { path: '/dashboard/settings', label: 'Settings', icon: 'settings', needsOrg: true, perm: 'settings:read' },
+      ],
+    },
   ];
 
-  platformNav: NavItem[] = [
-    { path: '/dashboard/platform', label: 'Overview', icon: '&#9733;', exact: true },
-    { path: '/dashboard/platform/organizations', label: 'Clients', icon: '&#127970;' },
-    { path: '/dashboard/platform/endpoints', label: 'Endpoints', icon: '&#128279;' },
-    { path: '/dashboard/platform/incidents', label: 'Alerts', icon: '&#128680;' },
-    { path: '/dashboard/platform/scanner', label: 'Scanner', icon: '&#128269;' },
-    { path: '/dashboard/platform/users', label: 'Users', icon: '&#128101;' },
-    { path: '/dashboard/platform/plans', label: 'Billing', icon: '&#128176;' },
-    { path: '/dashboard/platform/billing', label: 'Revenue', icon: '&#128200;' },
-    { path: '/dashboard/platform/settings', label: 'System', icon: '&#9881;' },
-    { path: '/dashboard/platform/wordlists', label: 'Wordlists', icon: '&#128196;' },
-    { path: '/dashboard/platform/audit-logs', label: 'Audit', icon: '&#128221;' },
+  platformNavGroups: NavGroup[] = [
+    {
+      id: 'platform-overview',
+      label: 'Overview',
+      platformOnly: true,
+      items: [
+        { path: '/dashboard/platform', label: 'Command Center', icon: 'star', exact: true },
+      ],
+    },
+    {
+      id: 'platform-orgs',
+      label: 'Organizations',
+      platformOnly: true,
+      items: [
+        { path: '/dashboard/platform/organizations', label: 'All Organizations', icon: 'building' },
+        { path: '/dashboard/platform/users', label: 'Platform Users', icon: 'users' },
+      ],
+    },
+    {
+      id: 'platform-monitoring',
+      label: 'Monitoring',
+      platformOnly: true,
+      items: [
+        { path: '/dashboard/platform/endpoints', label: 'Protected Endpoints', icon: 'link' },
+        { path: '/dashboard/platform/incidents', label: 'Alert Inbox', icon: 'bell' },
+        { path: '/dashboard/platform/scanner', label: 'Scanner Status', icon: 'radar' },
+      ],
+    },
+    {
+      id: 'platform-billing',
+      label: 'Billing & Usage',
+      platformOnly: true,
+      items: [
+        { path: '/dashboard/platform/plans', label: 'Subscription Plans', icon: 'credit-card' },
+        { path: '/dashboard/platform/billing', label: 'Revenue', icon: 'dollar' },
+      ],
+    },
+    {
+      id: 'platform-config',
+      label: 'Platform Settings',
+      platformOnly: true,
+      items: [
+        { path: '/dashboard/platform/settings', label: 'System Health', icon: 'settings' },
+        { path: '/dashboard/platform/wordlists', label: 'Wordlists', icon: 'file' },
+        { path: '/dashboard/platform/audit-logs', label: 'Audit Logs', icon: 'audit' },
+      ],
+    },
   ];
 
   constructor(public auth: AuthService, private perms: PermissionService, private router: Router) {}
@@ -144,19 +209,60 @@ export class DashboardLayoutComponent implements OnInit {
     return name.split(/[\s@]+/).slice(0, 2).map(p => p[0]?.toUpperCase() || '').join('');
   }
 
-  get visibleNav() {
-    return this.navItems.filter(item => {
-      if (item.needsOrg && !this.auth.hasOrganization()) return false;
-      if (item.perm && !this.perms.has(item.perm) && !this.perms.has('*')) return false;
-      return true;
-    });
+  get visibleGroups(): NavGroup[] {
+    const groups: NavGroup[] = [];
+    if (this.auth.isSuperAdmin()) {
+      groups.push(...this.platformNavGroups);
+      if (this.auth.hasOrganization()) {
+        groups.push(...this.orgNavGroups);
+      }
+    } else {
+      groups.push(...this.orgNavGroups);
+    }
+    return groups;
+  }
+
+  isItemVisible(item: NavItem): boolean {
+    if (item.needsOrg && !this.auth.hasOrganization()) return false;
+    if (item.perm && !this.perms.has(item.perm) && !this.perms.has('*')) return false;
+    return true;
+  }
+
+  toggleGroup(id: string) {
+    if (this.collapsedGroups.has(id)) this.collapsedGroups.delete(id);
+    else this.collapsedGroups.add(id);
+    this.collapsedGroups = new Set(this.collapsedGroups);
   }
 
   ngOnInit() {
-    const orgRoutes = this.navItems.filter(i => i.needsOrg).map(i => i.path);
-    const onTenantRoute = orgRoutes.some(p => this.router.url === p || (p !== '/dashboard' && this.router.url.startsWith(p + '/')));
+    const orgPaths = this.orgNavGroups.flatMap(g => g.items).filter(i => i.needsOrg).map(i => i.path);
+    const onTenantRoute = orgPaths.some(p => this.router.url === p || (p !== '/dashboard' && this.router.url.startsWith(p + '/')));
     if (onTenantRoute && !this.auth.hasOrganization()) {
       this.router.navigate(['/dashboard/platform']);
+    }
+    this.initCollapsedGroups();
+  }
+
+  private initCollapsedGroups() {
+    const url = this.router.url.split('?')[0];
+    const activeId = this.visibleGroups.find(g =>
+      g.items.some(item => this.isItemVisible(item) && (url === item.path || (item.path !== '/dashboard' && url.startsWith(item.path + '/'))))
+    )?.id;
+    this.collapsedGroups = new Set(
+      this.visibleGroups.map(g => g.id).filter(id => id !== activeId)
+    );
+  }
+
+  onSearchKeydown(e: KeyboardEvent) {
+    if (e.key !== 'Enter') return;
+    const q = this.searchQ.trim().toLowerCase();
+    if (!q) return;
+    const items = this.visibleGroups.flatMap(g => g.items).filter(i => this.isItemVisible(i));
+    const match = items.find(i => i.label.toLowerCase().includes(q) || i.path.toLowerCase().includes(q));
+    if (match) {
+      this.router.navigate([match.path]);
+      this.searchQ = '';
+      this.closeMobile();
     }
   }
 

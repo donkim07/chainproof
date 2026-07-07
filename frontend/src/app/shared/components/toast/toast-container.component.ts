@@ -22,10 +22,10 @@ export class ToastContainerComponent {
 
   toastClass(type: string): string {
     const map: Record<string, string> = {
-      success: 'border-emerald-500/30 bg-emerald-950/90 text-emerald-200',
-      error: 'border-rose-500/30 bg-rose-950/90 text-rose-200',
-      warning: 'border-amber-500/30 bg-amber-950/90 text-amber-200',
-      info: 'border-brand-500/30 bg-slate-900/90 text-slate-200',
+      success: 'border-signal-500/30 bg-emerald-950/90 text-emerald-200',
+      error: 'border-alert-500/30 bg-rose-950/90 text-rose-200',
+      warning: 'border-warn-500/30 bg-amber-950/90 text-amber-200',
+      info: 'border-signal-500/30 bg-ink-900/90 text-slate-200',
     };
     return map[type] || map['info'];
   }

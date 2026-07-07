@@ -29,7 +29,7 @@ export class ButtonComponent {
       primary: 'btn-primary',
       secondary: 'btn-secondary',
       ghost: 'btn-ghost',
-      danger: 'btn-primary !bg-rose-600 hover:!bg-rose-500',
+      danger: 'btn-primary !bg-alert-500 hover:!bg-alert-400',
     };
     return base + map[this.variant];
   }

@@ -16,17 +16,17 @@ export interface BarChartItem {
       @for (item of items; track item.label) {
         <div>
           <div class="mb-1 flex justify-between text-xs">
-            <span class="text-slate-400">{{ item.label }}</span>
+            <span class="text-ink-500">{{ item.label }}</span>
             <span class="font-medium text-white">{{ item.value }}</span>
           </div>
-          <div class="h-2 rounded-full bg-slate-800 overflow-hidden">
+          <div class="h-2 rounded-full bg-ink-800 overflow-hidden">
             <div class="h-full rounded-full transition-all duration-700"
               [style.width.%]="barWidth(item.value)"
-              [class]="item.color || 'bg-brand-500'"></div>
+              [class]="item.color || 'bg-signal-500'"></div>
           </div>
         </div>
       } @empty {
-        <div class="py-6 text-center text-sm text-slate-500">No data yet</div>
+        <div class="py-6 text-center text-sm text-ink-500">No data yet</div>
       }
     </div>
   `,

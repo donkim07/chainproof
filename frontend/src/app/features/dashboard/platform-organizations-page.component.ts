@@ -26,16 +26,16 @@ interface Org {
     <div class="table-shell">
       <div class="table-toolbar">
         <input class="input-field max-w-xs" [(ngModel)]="q" placeholder="Search orgs..." />
-        <span class="text-sm text-slate-400">{{ filtered.length }} tenants</span>
+        <span class="text-sm text-ink-500">{{ filtered.length }} tenants</span>
       </div>
       <div class="overflow-x-auto">
         <table class="cp-table">
           <thead><tr><th>Name</th><th>Slug</th><th>Plan</th><th>Status</th><th>Active</th><th class="text-right">Actions</th></tr></thead>
           <tbody>
             @for (org of filtered; track org.id) {
-              <tr class="border-t border-slate-800 hover:bg-slate-800/30">
+              <tr class="border-t border-ink-800 hover:bg-ink-800/30">
                 <td class="font-medium text-white">{{ org.name }}</td>
-                <td class="font-mono text-xs text-slate-400">{{ org.slug }}</td>
+                <td class="font-mono text-xs text-ink-500">{{ org.slug }}</td>
                 <td>
                   <select class="input-field py-1 text-xs" [ngModel]="org.plan_slug" (ngModelChange)="changePlan(org, $event)">
                     <option value="free">free</option><option value="pro">pro</option><option value="enterprise">enterprise</option>
@@ -48,7 +48,7 @@ interface Org {
                 </td>
               </tr>
             } @empty {
-              <tr><td colspan="6" class="py-12 text-center text-slate-500">No organizations.</td></tr>
+              <tr><td colspan="6" class="py-12 text-center text-ink-500">No organizations.</td></tr>
             }
           </tbody>
         </table>

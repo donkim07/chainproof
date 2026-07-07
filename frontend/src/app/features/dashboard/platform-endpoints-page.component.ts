@@ -27,7 +27,7 @@ interface PlatformSite {
     <div class="table-shell mb-6">
       <div class="table-toolbar">
         <app-search-input placeholder="Search client, URL..." [(value)]="q" />
-        <span class="text-sm text-slate-400">{{ filtered.length }} sites</span>
+        <span class="text-sm text-ink-500">{{ filtered.length }} sites</span>
       </div>
       <div class="overflow-x-auto">
         <table class="cp-table">
@@ -38,10 +38,10 @@ interface PlatformSite {
           </thead>
           <tbody>
             @for (s of pageRows; track s.id) {
-              <tr class="border-t border-slate-800 hover:bg-slate-800/30 transition-colors">
+              <tr class="border-t border-ink-800 hover:bg-ink-800/30 transition-colors">
                 <td class="text-white">{{ s.org_name }}</td>
                 <td>{{ s.name }}</td>
-                <td class="font-mono text-xs text-slate-400 max-w-[200px] truncate">{{ s.base_url }}</td>
+                <td class="font-mono text-xs text-ink-500 max-w-[200px] truncate">{{ s.base_url }}</td>
                 <td>{{ s.endpoints }}</td>
                 <td>{{ s.anchors }}</td>
                 <td><span [class]="s.status === 'active' ? 'badge-success' : 'badge-warning'">{{ s.status }}</span></td>

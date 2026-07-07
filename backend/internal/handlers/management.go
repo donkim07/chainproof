@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/chainproof/baas/internal/database"
+	"github.com/chainproof/baas/internal/middleware"
 	"github.com/chainproof/baas/internal/models"
 	"github.com/chainproof/baas/internal/services"
 	"github.com/gin-gonic/gin"
@@ -123,8 +124,12 @@ func (h *TeamHandler) UpdateUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := h.team.UpdateUser(c.Request.Context(), slug, id, req); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	actorID := uuid.Nil
+	if claims := middleware.GetClaims(c); claims != nil {
+		actorID = claims.UserID
+	}
+	if err := h.team.UpdateUser(c.Request.Context(), slug, id, actorID, req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"success": true})
