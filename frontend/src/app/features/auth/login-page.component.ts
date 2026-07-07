@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, effect } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
@@ -16,7 +16,7 @@ import { SecureInputComponent } from '../../shared/components/secure-input/secur
     <app-public-nav />
     <div class="relative flex min-h-screen items-center justify-center px-4 pt-20 pb-12">
       <div class="hero-glow absolute inset-0 -z-10 opacity-60"></div>
-      <div class="w-full max-w-md animate-slide-up">
+      <div class="w-full max-w-md">
         <div class="card glow-border">
           <div class="mb-6 text-center">
             <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-emerald-500 text-xl font-bold shadow-lg shadow-brand-600/25">CP</div>
@@ -42,14 +42,17 @@ import { SecureInputComponent } from '../../shared/components/secure-input/secur
     </div>
   `,
 })
-export class LoginPageComponent implements OnInit {
+export class LoginPageComponent {
   email = '';
   password = '';
   loading = false;
-  constructor(private auth: AuthService, private toast: ToastService, private router: Router) {}
-
-  ngOnInit() {
-    if (this.auth.isLoggedIn()) this.router.navigateByUrl(this.auth.postLoginPath());
+  constructor(private auth: AuthService, private toast: ToastService, private router: Router) {
+    effect(() => {
+      if (!this.auth.sessionChecked()) return;
+      if (this.auth.isLoggedIn()) {
+        void this.router.navigateByUrl(this.auth.postLoginPath());
+      }
+    });
   }
 
   login() {

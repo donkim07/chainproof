@@ -1,4 +1,4 @@
-import { Directive, Input, TemplateRef, ViewContainerRef, inject, effect } from '@angular/core';
+import { Directive, Input, TemplateRef, ViewContainerRef, inject, effect, untracked } from '@angular/core';
 import { PermissionService } from '../../core/services/permission.service';
 
 /** Structural directive — show template only when user has permission. */
@@ -8,23 +8,28 @@ export class CanDirective {
   private tpl = inject(TemplateRef<unknown>);
   private vcr = inject(ViewContainerRef);
   private code = '';
+  private showing = false;
 
   @Input() set appCan(code: string) {
     this.code = code;
-    this.render();
+    this.sync();
   }
 
   constructor() {
     effect(() => {
-      this.perm.can();
-      this.render();
+      this.perm.revision();
+      untracked(() => this.sync());
     });
   }
 
-  private render() {
-    this.vcr.clear();
-    if (!this.code || this.perm.has(this.code) || this.perm.has('*')) {
+  private sync() {
+    const ok = !this.code || this.perm.has(this.code);
+    if (ok && !this.showing) {
       this.vcr.createEmbeddedView(this.tpl);
+      this.showing = true;
+    } else if (!ok && this.showing) {
+      this.vcr.clear();
+      this.showing = false;
     }
   }
 }

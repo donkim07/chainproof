@@ -11,6 +11,9 @@ export class PermissionService {
     return (code: string) => set.has('*') || set.has(code);
   });
 
+  /** Bumped when permissions change — for structural directives. */
+  readonly revision = computed(() => this.permissions().join('|'));
+
   setPermissions(perms: string[]) {
     this.permissions.set(perms);
   }

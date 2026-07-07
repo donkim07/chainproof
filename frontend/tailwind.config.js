@@ -34,12 +34,12 @@ module.exports = {
         mono: ['JetBrains Mono', 'monospace'],
       },
   animation: {
-    'fade-in': 'fadeIn 0.5s ease-out',
-    'slide-up': 'slideUp 0.4s ease-out',
+    'fade-in': 'fadeIn 0.5s ease-out forwards',
+    'slide-up': 'slideUp 0.4s ease-out forwards',
     'pulse-soft': 'pulseSoft 2s ease-in-out infinite',
     'float': 'float 6s ease-in-out infinite',
     'float-delayed': 'float 6s ease-in-out 2s infinite',
-    'scale-in': 'scaleIn 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+    'scale-in': 'scaleIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards',
     'shimmer': 'shimmer 2.5s linear infinite',
   },
   keyframes: {

@@ -47,10 +47,10 @@ import { ButtonComponent } from '../button/button.component';
 
       <!-- Mobile menu panel -->
       @if (mobileOpen) {
-        <div class="md:hidden border-t border-slate-800/80 bg-slate-950/98 px-4 py-4 space-y-1 animate-fade-in">
-          <a routerLink="/" class="mobile-nav-link" (click)="closeMobile()">Product</a>
-          <a routerLink="/pricing" class="mobile-nav-link" (click)="closeMobile()">Pricing</a>
-          <a routerLink="/docs" class="mobile-nav-link" (click)="closeMobile()">Docs</a>
+        <div class="md:hidden border-t border-slate-800/80 bg-slate-950/98 px-4 py-4 space-y-1">
+          <a routerLink="/" class="block rounded-lg px-3 py-3 text-base font-medium text-slate-300 hover:bg-slate-800/60 hover:text-white transition-colors" (click)="closeMobile()">Product</a>
+          <a routerLink="/pricing" class="block rounded-lg px-3 py-3 text-base font-medium text-slate-300 hover:bg-slate-800/60 hover:text-white transition-colors" (click)="closeMobile()">Pricing</a>
+          <a routerLink="/docs" class="block rounded-lg px-3 py-3 text-base font-medium text-slate-300 hover:bg-slate-800/60 hover:text-white transition-colors" (click)="closeMobile()">Docs</a>
           <div class="my-3 border-t border-slate-800"></div>
           @if (auth.isLoggedIn()) {
             <p class="px-3 py-2 text-xs text-slate-500 truncate">{{ auth.user()?.email }}</p>
@@ -69,11 +69,6 @@ import { ButtonComponent } from '../button/button.component';
       }
     </nav>
   `,
-  styles: [`
-    .mobile-nav-link {
-      @apply block rounded-lg px-3 py-3 text-base font-medium text-slate-300 hover:bg-slate-800/60 hover:text-white transition-colors;
-    }
-  `],
 })
 export class PublicNavComponent {
   mobileOpen = false;

@@ -8,6 +8,13 @@
     @apply bg-slate-950 text-slate-100 font-sans antialiased;
     background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(51, 136, 252, 0.15), transparent);
   }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 }
 
 @layer components {

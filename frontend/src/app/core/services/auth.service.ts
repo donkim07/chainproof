@@ -25,20 +25,21 @@ export interface AuthResponse {
 export class AuthService {
   user = signal<AuthUser | null>(null);
   isLoggedIn = signal(false);
+  private _sessionChecked = signal(false);
+  readonly sessionChecked = this._sessionChecked.asReadonly();
 
   constructor(private api: ApiService, private router: Router, private perms: PermissionService) {
-    const token = localStorage.getItem('cp_token');
-    if (token) {
-      this.isLoggedIn.set(true);
+    if (localStorage.getItem('cp_token')) {
       this.refreshMe();
+    } else {
+      this._sessionChecked.set(true);
     }
   }
 
   private applyUser(u: AuthUser) {
     this.user.set(u);
-    if (u.role === 'super_admin') {
-      this.perms.setPermissions(['*']);
-    } else if (u.role === 'owner') {
+    this.isLoggedIn.set(true);
+    if (u.role === 'super_admin' || u.role === 'owner') {
       this.perms.setPermissions(['*']);
     } else {
       this.perms.setPermissions(u.permissions ?? []);
@@ -48,8 +49,17 @@ export class AuthService {
 
   refreshMe() {
     this.api.get<AuthUser>('/api/v1/auth/me').subscribe({
-      next: u => this.applyUser(u),
-      error: () => this.logout(),
+      next: u => {
+        this.applyUser(u);
+        this._sessionChecked.set(true);
+      },
+      error: () => {
+        this.clearSession(false);
+        this._sessionChecked.set(true);
+        if (this.router.url.startsWith('/dashboard')) {
+          this.router.navigate(['/login']);
+        }
+      },
     });
   }
 
@@ -72,8 +82,8 @@ export class AuthService {
     } else {
       localStorage.removeItem('cp_org_slug');
     }
-    this.isLoggedIn.set(true);
-    this.refreshMe();
+    this._sessionChecked.set(true);
+    this.applyUser(res.user);
   }
 
   hasOrganization(): boolean {
@@ -90,11 +100,17 @@ export class AuthService {
   }
 
   logout() {
+    this.clearSession(true);
+  }
+
+  private clearSession(navigateToLogin: boolean) {
     localStorage.removeItem('cp_token');
     localStorage.removeItem('cp_org_slug');
     this.user.set(null);
     this.isLoggedIn.set(false);
     this.perms.clear();
-    this.router.navigate(['/login']);
+    if (navigateToLogin) {
+      this.router.navigate(['/login']);
+    }
   }
 }

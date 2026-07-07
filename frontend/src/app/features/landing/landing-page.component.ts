@@ -27,7 +27,7 @@ interface Plan {
       <div class="hero-glow absolute inset-0 -z-10"></div>
       <div class="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,rgba(51,136,252,0.12),transparent_50%)]"></div>
       <div class="mx-auto max-w-7xl px-4 sm:px-6 text-center lg:text-left lg:grid lg:grid-cols-2 lg:items-center lg:gap-16">
-        <div class="animate-fade-in">
+        <div>
           <div class="mb-6 inline-flex items-center gap-2 rounded-full border border-brand-500/30 bg-brand-500/10 px-4 py-1.5 text-sm text-brand-300">
             <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse-soft"></span>
             Hyperledger Fabric · Developer-first API
@@ -53,7 +53,7 @@ interface Plan {
             <span>&#10003; Tamper alerts</span>
           </div>
         </div>
-        <div class="mt-16 lg:mt-0 animate-slide-up">
+        <div class="mt-16 lg:mt-0">
           <div class="card glow-border p-1 bg-gradient-to-br from-brand-500/20 to-emerald-500/10">
             <div class="rounded-[10px] bg-slate-900/90 p-6 font-mono text-xs text-left overflow-x-auto">
               <div class="text-slate-500"># After each save in your backend</div>
@@ -69,7 +69,7 @@ interface Plan {
     <section class="border-y border-slate-800/80 bg-slate-900/50 py-12">
       <div class="mx-auto max-w-7xl px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
         @for (s of stats; track s.label) {
-          <div class="animate-slide-up">
+          <div>
             <div class="text-3xl font-bold text-white">{{ s.value }}</div>
             <div class="mt-1 text-sm text-slate-500">{{ s.label }}</div>
           </div>
