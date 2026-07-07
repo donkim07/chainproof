@@ -78,7 +78,7 @@ func main() {
 	teamHandler := handlers.NewTeamHandler(teamSvc, platformDB)
 	notificationHandler := handlers.NewNotificationHandler(notificationSvc, platformDB)
 	inboxHandler := handlers.NewInboxHandler(inboxSvc, platformDB)
-	dashboardHandler := handlers.NewDashboardHandler(searchSvc)
+	dashboardHandler := handlers.NewDashboardHandler(searchSvc, platformDB)
 	orgBillingHandler := handlers.NewOrgBillingHandler(orgBillingSvc, platformDB)
 	attributionHandler := handlers.NewAttributionHandler(attributionSvc, platformDB)
 	proxyHandler := handlers.NewProxyHandler(siteSvc, integritySvc, platformDB, cfg.JWTSecret)
@@ -166,8 +166,8 @@ func main() {
 			protected.GET("/inbox/unread-count", middleware.RequireTenantPermission(permSvc, "settings:read"), inboxHandler.UnreadCount)
 			protected.PATCH("/inbox/:id/read", middleware.RequireTenantPermission(permSvc, "settings:read"), inboxHandler.MarkRead)
 
-			protected.GET("/billing/overview", middleware.RequireTenantPermission(permSvc, "settings:read"), orgBillingHandler.Overview)
-			protected.GET("/billing/invoices", middleware.RequireTenantPermission(permSvc, "settings:read"), orgBillingHandler.Invoices)
+			protected.GET("/billing/overview", orgBillingHandler.Overview)
+			protected.GET("/billing/invoices", orgBillingHandler.Invoices)
 			protected.POST("/billing/change-plan", middleware.RequireTenantPermission(permSvc, "settings:write"), orgBillingHandler.ChangePlan)
 
 			protected.POST("/tampering/:id/investigate", middleware.RequireTenantPermission(permSvc, "tampering:investigate"), attributionHandler.Investigate)

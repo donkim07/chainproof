@@ -17,9 +17,14 @@ import { PublicNavComponent } from '../../shared/components/public-nav/public-na
       <div class="w-full max-w-md card">
         <h1 class="text-xl font-bold text-white mb-2">Forgot password</h1>
         <p class="text-sm text-ink-500 mb-6">We'll email you a reset link if the account exists.</p>
-        <form (ngSubmit)="submit()" class="space-y-4">
-          <input class="input-field" type="email" [(ngModel)]="email" name="email" required placeholder="you@company.com" />
-          <app-button type="submit" [fullWidth]="true" [loading]="loading">Send reset link</app-button>
+        <form (ngSubmit)="submit()" class="space-y-6">
+          <div>
+            <label class="mb-1.5 block text-sm text-ink-500">Email</label>
+            <input class="input-field" type="email" [(ngModel)]="email" name="email" required placeholder="you@company.com" />
+          </div>
+          <div class="pt-2">
+            <app-button type="submit" [fullWidth]="true" [loading]="loading">Send reset link</app-button>
+          </div>
         </form>
         <p class="mt-4 text-center text-sm text-ink-500"><a routerLink="/login" class="text-signal-400 hover:underline">Back to sign in</a></p>
       </div>

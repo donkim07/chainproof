@@ -4,26 +4,25 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/chainproof/baas/internal/middleware"
+	"github.com/chainproof/baas/internal/database"
 	"github.com/chainproof/baas/internal/services"
 	"github.com/gin-gonic/gin"
 )
 
 type DashboardHandler struct {
-	search *services.DashboardSearchService
+	search   *services.DashboardSearchService
+	platform *database.PlatformDB
 }
 
-func NewDashboardHandler(search *services.DashboardSearchService) *DashboardHandler {
-	return &DashboardHandler{search: search}
+func NewDashboardHandler(search *services.DashboardSearchService, platform *database.PlatformDB) *DashboardHandler {
+	return &DashboardHandler{search: search, platform: platform}
 }
 
 func (h *DashboardHandler) Search(c *gin.Context) {
-	claims := middleware.GetClaims(c)
-	if claims.OrgSlug == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "organization context required"})
+	slug, ok := requireOrgSlug(c, h.platform)
+	if !ok {
 		return
 	}
-	slug := claims.OrgSlug
 	q := c.Query("q")
 	results, err := h.search.Search(c.Request.Context(), slug, q)
 	if err != nil {

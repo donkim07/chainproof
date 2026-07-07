@@ -22,7 +22,7 @@ const PATH_NODES: Record<string, string> = {
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="relative w-full h-[480px] sm:h-[520px] bg-ink-950 overflow-hidden rounded-2xl border border-ink-700 shadow-2xl shadow-black/40">
+    <div class="relative w-full aspect-[4/3] max-h-[min(72vw,360px)] sm:max-h-[520px] sm:aspect-auto sm:h-[480px] bg-ink-950 overflow-hidden rounded-2xl border border-ink-700 shadow-2xl shadow-black/40">
       <div class="absolute inset-0 opacity-[0.07]"
         style="background-image: linear-gradient(#17B8A6 1px, transparent 1px), linear-gradient(90deg, #17B8A6 1px, transparent 1px); background-size: 32px 32px;"></div>
       <div class="absolute inset-0 bg-gradient-to-b from-signal-900/10 via-transparent to-ink-950 pointer-events-none"></div>
@@ -32,7 +32,7 @@ const PATH_NODES: Record<string, string> = {
         <div class="text-ink-500 text-[10px] mt-0.5">channel: chainproof-ledger</div>
       </div>
 
-      <button type="button" class="absolute top-4 right-4 z-10 btn-ghost text-[10px] border border-ink-700"
+      <button type="button" class="absolute top-2 right-2 sm:top-4 sm:right-4 z-10 btn-ghost text-[9px] sm:text-[10px] border border-ink-700 px-2 py-1"
         (click)="simulateTamper()">Simulate tampering</button>
 
       <svg #svg class="absolute inset-0 w-full h-full" viewBox="0 0 800 520" preserveAspectRatio="xMidYMid meet">
@@ -107,7 +107,7 @@ const PATH_NODES: Record<string, string> = {
         </g>
       </svg>
 
-      <div class="absolute bottom-4 left-4 w-56 rounded-lg border border-ink-700 bg-ink-900/95 backdrop-blur-sm p-3 font-mono text-[10px] max-h-28 overflow-hidden z-10 shadow-lg">
+      <div class="absolute bottom-2 left-2 sm:bottom-4 sm:left-4 w-[42%] sm:w-56 rounded-lg border border-ink-700 bg-ink-900/95 backdrop-blur-sm p-2 sm:p-3 font-mono text-[9px] sm:text-[10px] max-h-20 sm:max-h-28 overflow-hidden z-10 shadow-lg">
         @for (log of logs(); track $index) {
           <div class="text-ink-500 leading-relaxed" [class.text-signal-400]="$index === 0">{{ log }}</div>
         }

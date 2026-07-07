@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { ApiService } from '../../core/services/api.service';
@@ -11,7 +11,7 @@ import { SecureInputComponent } from '../../shared/components/secure-input/secur
 @Component({
   selector: 'app-reset-password-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, ButtonComponent, PublicNavComponent, SecureInputComponent],
+  imports: [CommonModule, FormsModule, ButtonComponent, PublicNavComponent, SecureInputComponent],
   template: `
     <app-public-nav />
     <div class="flex min-h-screen items-center justify-center px-4 pt-20 pb-12">

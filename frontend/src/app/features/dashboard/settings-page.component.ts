@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
+import { ToastService } from '../../core/services/toast.service';
 import { ButtonComponent } from '../../shared/components/button/button.component';
 import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
 

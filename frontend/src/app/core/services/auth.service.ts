@@ -104,6 +104,10 @@ export class AuthService {
     this.clearSession(true);
   }
 
+  handleUnauthorized() {
+    this.clearSession(true);
+  }
+
   private clearSession(navigateToLogin: boolean) {
     localStorage.removeItem('cp_token');
     localStorage.removeItem('cp_org_slug');

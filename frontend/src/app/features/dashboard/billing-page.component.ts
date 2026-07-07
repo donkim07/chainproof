@@ -36,7 +36,18 @@ interface Invoice {
   template: `
     <app-page-header title="Billing &amp; Subscription" subtitle="Manage your plan, usage, and invoices." badge="Access &amp; Billing" />
 
-    @if (overview) {
+    @if (loading) {
+      <div class="grid gap-4 sm:grid-cols-3 mb-8">
+        @for (_ of [1,2,3]; track $index) {
+          <div class="kpi-card animate-pulse"><div class="h-16 rounded-lg bg-ink-800"></div></div>
+        }
+      </div>
+    } @else if (error) {
+      <div class="card border-alert-500/30 text-center py-12">
+        <p class="text-alert-400 mb-2">{{ error }}</p>
+        <app-button variant="secondary" (click)="load()">Retry</app-button>
+      </div>
+    } @else if (overview) {
       <div class="grid gap-4 sm:grid-cols-3 mb-8">
         <app-stat-card label="Current plan" [value]="overview.plan_name" color="text-signal-400" icon="credit-card" />
         <app-stat-card label="Sites used" [value]="overview.sites_used + ' / ' + siteLimit" color="text-white" icon="globe" />
@@ -110,12 +121,27 @@ export class BillingPageComponent implements OnInit {
   overview: BillingOverview | null = null;
   invoices: Invoice[] = [];
   changing = '';
+  loading = true;
+  error = '';
 
   constructor(private api: ApiService, private toast: ToastService) {}
 
-  ngOnInit() {
-    this.api.get<BillingOverview>('/api/v1/billing/overview').subscribe(o => this.overview = o);
-    this.api.get<Invoice[]>('/api/v1/billing/invoices').subscribe(i => this.invoices = i);
+  ngOnInit() { this.load(); }
+
+  load() {
+    this.loading = true;
+    this.error = '';
+    this.api.get<BillingOverview>('/api/v1/billing/overview').subscribe({
+      next: o => { this.overview = o; this.loading = false; },
+      error: e => {
+        this.error = e.error?.message || e.error?.error || 'Could not load billing information';
+        this.loading = false;
+      },
+    });
+    this.api.get<Invoice[]>('/api/v1/billing/invoices').subscribe({
+      next: i => this.invoices = i,
+      error: () => {},
+    });
   }
 
   get siteLimit() { return this.fmtLimit(this.overview?.max_sites); }
@@ -136,7 +162,7 @@ export class BillingPageComponent implements OnInit {
       next: () => {
         this.toast.success(`Plan updated to ${plan}`);
         this.changing = '';
-        this.ngOnInit();
+        this.load();
       },
       error: e => { this.toast.error(e.error?.error || 'Upgrade failed'); this.changing = ''; },
     });
