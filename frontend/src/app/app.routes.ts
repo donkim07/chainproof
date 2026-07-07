@@ -21,6 +21,9 @@ import { PlatformAuditPageComponent } from './features/dashboard/platform-audit-
 import { PlatformScannerPageComponent } from './features/dashboard/platform-scanner-page.component';
 import { PlatformEndpointsPageComponent } from './features/dashboard/platform-endpoints-page.component';
 import { PlatformIncidentsPageComponent } from './features/dashboard/platform-incidents-page.component';
+import { PlatformWordlistsPageComponent } from './features/dashboard/platform-wordlists-page.component';
+import { PlatformBillingPageComponent } from './features/dashboard/platform-billing-page.component';
+import { PlatformSettingsPageComponent } from './features/dashboard/platform-settings-page.component';
 import { authGuard, orgGuard, superAdminGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
@@ -49,6 +52,9 @@ export const routes: Routes = [
       { path: 'platform/scanner', component: PlatformScannerPageComponent, canActivate: [superAdminGuard] },
       { path: 'platform/users', component: PlatformUsersPageComponent, canActivate: [superAdminGuard] },
       { path: 'platform/plans', component: PlatformPlansPageComponent, canActivate: [superAdminGuard] },
+      { path: 'platform/billing', component: PlatformBillingPageComponent, canActivate: [superAdminGuard] },
+      { path: 'platform/settings', component: PlatformSettingsPageComponent, canActivate: [superAdminGuard] },
+      { path: 'platform/wordlists', component: PlatformWordlistsPageComponent, canActivate: [superAdminGuard] },
       { path: 'platform/audit-logs', component: PlatformAuditPageComponent, canActivate: [superAdminGuard] },
     ],
   },

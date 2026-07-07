@@ -70,6 +70,50 @@ func (s *TeamService) ListRoles(ctx context.Context, orgSlug string) ([]models.R
 	return roles, nil
 }
 
+func (s *TeamService) ListPermissions(ctx context.Context, orgSlug string) ([]map[string]interface{}, error) {
+	pool, _, err := s.tenant.GetPool(ctx, orgSlug)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := pool.Query(ctx, `SELECT code, description, category FROM permissions ORDER BY category, code`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []map[string]interface{}
+	for rows.Next() {
+		var code, desc, cat string
+		if rows.Scan(&code, &desc, &cat) == nil {
+			out = append(out, map[string]interface{}{"code": code, "description": desc, "category": cat})
+		}
+	}
+	return out, nil
+}
+
+func (s *TeamService) RolePermissions(ctx context.Context, orgSlug, roleName string) ([]string, error) {
+	pool, _, err := s.tenant.GetPool(ctx, orgSlug)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := pool.Query(ctx, `
+		SELECT p.code FROM permissions p
+		JOIN role_permissions rp ON rp.permission_id = p.id
+		JOIN roles r ON r.id = rp.role_id
+		WHERE r.name = $1`, roleName)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var codes []string
+	for rows.Next() {
+		var c string
+		if rows.Scan(&c) == nil {
+			codes = append(codes, c)
+		}
+	}
+	return codes, nil
+}
+
 func (s *TeamService) CreateUser(ctx context.Context, orgSlug string, req models.TeamUserCreateRequest) (*models.TenantUser, error) {
 	pool, _, err := s.tenant.GetPool(ctx, orgSlug)
 	if err != nil {

@@ -45,6 +45,32 @@ func (h *TeamHandler) ListRoles(c *gin.Context) {
 	c.JSON(http.StatusOK, roles)
 }
 
+func (h *TeamHandler) ListPermissions(c *gin.Context) {
+	slug, ok := requireOrgSlug(c, h.platform)
+	if !ok {
+		return
+	}
+	perms, err := h.team.ListPermissions(c.Request.Context(), slug)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, perms)
+}
+
+func (h *TeamHandler) GetRolePermissions(c *gin.Context) {
+	slug, ok := requireOrgSlug(c, h.platform)
+	if !ok {
+		return
+	}
+	codes, err := h.team.RolePermissions(c.Request.Context(), slug, c.Param("role"))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"role": c.Param("role"), "permissions": codes})
+}
+
 func (h *TeamHandler) CreateUser(c *gin.Context) {
 	slug, ok := requireOrgSlug(c, h.platform)
 	if !ok {

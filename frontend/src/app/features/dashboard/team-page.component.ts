@@ -4,6 +4,10 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ButtonComponent } from '../../shared/components/button/button.component';
+import { PageHeaderComponent } from '../../shared/components/page-header/page-header.component';
+import { SearchInputComponent } from '../../shared/components/search-input/search-input.component';
+import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
+import { CanDirective } from '../../shared/directives/can.directive';
 
 interface TeamUser {
   id: string;
@@ -16,80 +20,93 @@ interface TeamUser {
 interface Role {
   id: string;
   name: string;
+  description?: string;
+  is_system?: boolean;
+}
+
+interface Permission {
+  code: string;
+  description: string;
+  category: string;
 }
 
 @Component({
   selector: 'app-team-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, ButtonComponent],
+  imports: [CommonModule, FormsModule, ButtonComponent, PageHeaderComponent, SearchInputComponent, PaginationComponent, CanDirective],
   template: `
-    <div class="space-y-6">
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 class="text-2xl font-bold text-white">Team & Roles</h1>
-          <p class="text-slate-400">Manage users and role-based permissions.</p>
-        </div>
+    <app-page-header title="Team &amp; Roles" subtitle="Manage members and view role permissions (RBAC)." badge="Organization">
+      <ng-container actions *appCan="'team:write'">
         <app-button (click)="openCreate = !openCreate">+ Add User</app-button>
-      </div>
+      </ng-container>
+    </app-page-header>
 
-      @if (openCreate) {
-        <div class="card space-y-3">
-          <h3 class="text-lg font-semibold">New team member</h3>
-          <div class="grid gap-3 md:grid-cols-2">
-            <input class="input-field" placeholder="Full name" [(ngModel)]="form.full_name" />
-            <input class="input-field" placeholder="Email" type="email" [(ngModel)]="form.email" />
-            <input class="input-field" placeholder="Temporary password" type="password" [(ngModel)]="form.password" />
-            <select class="input-field" [(ngModel)]="form.role">
-              @for (r of roles; track r.id) {
-                <option [value]="r.name">{{ r.name }}</option>
-              }
-            </select>
-          </div>
-          <app-button (click)="createUser()" [loading]="saving">Create user</app-button>
+    @if (openCreate) {
+      <div class="card animate-slide-up mb-6 space-y-3">
+        <h3 class="font-semibold text-white">New team member</h3>
+        <div class="grid gap-3 md:grid-cols-2">
+          <input class="input-field" placeholder="Full name" [(ngModel)]="form.full_name" />
+          <input class="input-field" placeholder="Email" type="email" [(ngModel)]="form.email" autocomplete="off" />
+          <input class="input-field" placeholder="Temporary password" type="password" [(ngModel)]="form.password" />
+          <select class="input-field" [(ngModel)]="form.role">
+            @for (r of roles; track r.id) {
+              <option [value]="r.name">{{ r.name }}</option>
+            }
+          </select>
         </div>
-      }
+        <app-button (click)="createUser()" [loading]="saving">Create user</app-button>
+      </div>
+    }
 
-      <div class="card p-0 overflow-hidden">
-        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 p-4">
-          <input class="input-field max-w-sm" [(ngModel)]="q" placeholder="Search team..." />
+    <div class="grid gap-6 xl:grid-cols-5 mb-8">
+      <div class="table-shell xl:col-span-3">
+        <div class="table-toolbar">
+          <app-search-input placeholder="Search team..." [(value)]="q" />
           <span class="text-sm text-slate-400">{{ filtered.length }} users</span>
         </div>
         <div class="overflow-x-auto">
-          <table class="w-full min-w-[720px] text-sm">
-            <thead class="bg-slate-800/50 text-slate-400">
-              <tr>
-                <th class="px-4 py-3 text-left">Name</th>
-                <th class="px-4 py-3 text-left">Email</th>
-                <th class="px-4 py-3 text-left">Roles</th>
-                <th class="px-4 py-3 text-left">Status</th>
-                <th class="px-4 py-3 text-right">Actions</th>
-              </tr>
-            </thead>
+          <table class="cp-table">
+            <thead><tr><th>Name</th><th>Email</th><th>Roles</th><th>Status</th><th class="text-right">Actions</th></tr></thead>
             <tbody>
               @for (u of paged(); track u.id) {
-                <tr class="border-b border-slate-800">
-                  <td class="px-4 py-3 text-white">{{ u.full_name }}</td>
-                  <td class="px-4 py-3 text-slate-300">{{ u.email }}</td>
-                  <td class="px-4 py-3">
-                    @for (r of u.roles; track r) { <span class="badge-info mr-1">{{ r }}</span> }
-                  </td>
-                  <td class="px-4 py-3"><span [class]="u.active ? 'badge-success' : 'badge-danger'">{{ u.active ? 'Active' : 'Disabled' }}</span></td>
-                  <td class="px-4 py-3 text-right space-x-2">
-                    <button class="btn-ghost text-xs" (click)="toggleActive(u)">{{ u.active ? 'Disable' : 'Enable' }}</button>
+                <tr class="border-t border-slate-800 hover:bg-slate-800/30 transition-colors">
+                  <td class="text-white">{{ u.full_name }}</td>
+                  <td class="text-slate-400">{{ u.email }}</td>
+                  <td>@for (r of u.roles; track r) { <span class="badge-info mr-1">{{ r }}</span> }</td>
+                  <td><span [class]="u.active ? 'badge-success' : 'badge-danger'">{{ u.active ? 'Active' : 'Off' }}</span></td>
+                  <td class="text-right">
+                    <button *appCan="'team:write'" class="text-xs text-brand-400 hover:underline" (click)="toggleActive(u)">{{ u.active ? 'Disable' : 'Enable' }}</button>
                   </td>
                 </tr>
               } @empty {
-                <tr><td colspan="5" class="px-4 py-8 text-center text-slate-500">No users yet.</td></tr>
+                <tr><td colspan="5" class="py-8 text-center text-slate-500">No team members.</td></tr>
               }
             </tbody>
           </table>
         </div>
-        <div class="flex items-center justify-between border-t border-slate-800 p-4 text-sm">
-          <span class="text-slate-400">Page {{ page }} / {{ pages }}</span>
-          <div class="space-x-2">
-            <button class="btn-ghost" [disabled]="page===1" (click)="page = page - 1">Prev</button>
-            <button class="btn-ghost" [disabled]="page===pages" (click)="page = page + 1">Next</button>
-          </div>
+        <app-pagination [page]="page" [pageSize]="8" [total]="filtered.length" (pageChange)="page = $event" />
+      </div>
+
+      <div class="xl:col-span-2 card">
+        <h3 class="font-semibold text-white mb-3">Role permissions</h3>
+        <select class="input-field mb-4" [(ngModel)]="selectedRole" (ngModelChange)="loadRolePerms()">
+          @for (r of roles; track r.id) {
+            <option [value]="r.name">{{ r.name }}</option>
+          }
+        </select>
+        <div class="max-h-80 overflow-y-auto space-y-2">
+          @for (cat of permCategories; track cat) {
+            <div class="text-[10px] uppercase tracking-wider text-slate-500 mt-3 first:mt-0">{{ cat }}</div>
+            @for (p of permsByCategory(cat); track p.code) {
+              <div class="flex items-start gap-2 text-sm py-1">
+                <span [class]="rolePermSet.has(p.code) ? 'text-emerald-400' : 'text-slate-600'">{{ rolePermSet.has(p.code) ? '&#10003;' : '○' }}</span>
+                <div>
+                  <code class="text-brand-300 text-xs">{{ p.code }}</code>
+                  <p class="text-xs text-slate-500">{{ p.description }}</p>
+                </div>
+              </div>
+            }
+          }
         </div>
       </div>
     </div>
@@ -98,47 +115,61 @@ interface Role {
 export class TeamPageComponent implements OnInit {
   users: TeamUser[] = [];
   roles: Role[] = [];
+  permissions: Permission[] = [];
+  rolePerms: string[] = [];
+  selectedRole = 'admin';
   q = '';
   page = 1;
-  pageSize = 8;
   openCreate = false;
   saving = false;
   form = { full_name: '', email: '', password: '', role: 'viewer' };
 
   constructor(private api: ApiService, private toast: ToastService) {}
 
-  ngOnInit(): void {
+  ngOnInit() {
     this.reload();
-    this.api.get<Role[]>('/api/v1/team/roles').subscribe(r => (this.roles = r));
+    this.api.get<Role[]>('/api/v1/team/roles').subscribe(r => {
+      this.roles = r;
+      if (r.length) this.selectedRole = r[0].name;
+      this.loadRolePerms();
+    });
+    this.api.get<Permission[]>('/api/v1/team/permissions').subscribe(p => this.permissions = p);
   }
 
   get filtered() {
-    const query = this.q.trim().toLowerCase();
-    if (!query) return this.users;
-    return this.users.filter(u => `${u.full_name} ${u.email} ${u.roles.join(' ')}`.toLowerCase().includes(query));
+    const v = this.q.trim().toLowerCase();
+    return v ? this.users.filter(u => `${u.full_name} ${u.email}`.toLowerCase().includes(v)) : this.users;
   }
 
-  get pages() {
-    return Math.max(1, Math.ceil(this.filtered.length / this.pageSize));
+  get rolePermSet() { return new Set(this.rolePerms); }
+
+  get permCategories() {
+    return [...new Set(this.permissions.map(p => p.category))];
+  }
+
+  permsByCategory(cat: string) {
+    return this.permissions.filter(p => p.category === cat);
   }
 
   paged() {
-    if (this.page > this.pages) this.page = this.pages;
-    const start = (this.page - 1) * this.pageSize;
-    return this.filtered.slice(start, start + this.pageSize);
+    const start = (this.page - 1) * 8;
+    return this.filtered.slice(start, start + 8);
   }
 
   reload() {
-    this.api.get<TeamUser[]>('/api/v1/team/users').subscribe(users => (this.users = users));
+    this.api.get<TeamUser[]>('/api/v1/team/users').subscribe(u => this.users = u);
+  }
+
+  loadRolePerms() {
+    this.api.get<{ permissions: string[] }>(`/api/v1/team/roles/${this.selectedRole}/permissions`)
+      .subscribe(r => this.rolePerms = r.permissions ?? []);
   }
 
   createUser() {
     this.saving = true;
     this.api.post('/api/v1/team/users', {
-      full_name: this.form.full_name,
-      email: this.form.email,
-      password: this.form.password,
-      roles: [this.form.role],
+      full_name: this.form.full_name, email: this.form.email,
+      password: this.form.password, roles: [this.form.role],
     }).subscribe({
       next: () => {
         this.toast.success('Team member added');
@@ -147,20 +178,14 @@ export class TeamPageComponent implements OnInit {
         this.reload();
         this.saving = false;
       },
-      error: e => {
-        this.toast.error(e.error?.error || 'Failed to add team member');
-        this.saving = false;
-      },
+      error: e => { this.toast.error(e.error?.error || 'Failed'); this.saving = false; },
     });
   }
 
   toggleActive(user: TeamUser) {
     this.api.patch(`/api/v1/team/users/${user.id}`, { active: !user.active }).subscribe({
-      next: () => {
-        user.active = !user.active;
-        this.toast.success('User updated');
-      },
-      error: () => this.toast.error('Failed to update user'),
+      next: () => { user.active = !user.active; this.toast.success('Updated'); },
+      error: () => this.toast.error('Failed'),
     });
   }
 }

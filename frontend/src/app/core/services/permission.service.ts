@@ -1,6 +1,6 @@
 import { Injectable, signal, computed } from '@angular/core';
-import { AuthService } from './auth.service';
 
+/** Tenant permission codes — set by AuthService after login (no AuthService dependency). */
 @Injectable({ providedIn: 'root' })
 export class PermissionService {
   private permissions = signal<string[]>([]);
@@ -11,21 +11,12 @@ export class PermissionService {
     return (code: string) => set.has('*') || set.has(code);
   });
 
-  constructor(private auth: AuthService) {
-    this.syncFromUser();
+  setPermissions(perms: string[]) {
+    this.permissions.set(perms);
   }
 
-  syncFromUser() {
-    const u = this.auth.user();
-    if (u?.role === 'super_admin') {
-      this.permissions.set(['*']);
-    } else {
-      this.permissions.set(u?.permissions ?? []);
-    }
-  }
-
-  load() {
-    return this.auth.user() ? Promise.resolve() : Promise.resolve();
+  clear() {
+    this.permissions.set([]);
   }
 
   has(code: string): boolean {

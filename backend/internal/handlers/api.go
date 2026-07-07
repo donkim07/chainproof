@@ -259,6 +259,44 @@ func (h *SiteHandler) Discover(c *gin.Context) {
 	c.JSON(http.StatusOK, endpoints)
 }
 
+func (h *SiteHandler) ForceIntegrity(c *gin.Context) {
+	slug, ok := requireOrgSlug(c, h.platform)
+	if !ok {
+		return
+	}
+	siteID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid site id"})
+		return
+	}
+	result, err := h.sites.ForceIntegrityCheck(c.Request.Context(), slug, siteID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
+
+func (h *SiteHandler) ExportEndpoints(c *gin.Context) {
+	slug, ok := requireOrgSlug(c, h.platform)
+	if !ok {
+		return
+	}
+	siteID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid site id"})
+		return
+	}
+	csv, err := h.sites.ExportEndpointsCSV(c.Request.Context(), slug, siteID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.Header("Content-Type", "text/csv")
+	c.Header("Content-Disposition", "attachment; filename=endpoints.csv")
+	c.String(http.StatusOK, csv)
+}
+
 func (h *SiteHandler) ListEndpoints(c *gin.Context) {
 	slug, ok := requireOrgSlug(c, h.platform)
 	if !ok {
@@ -525,10 +563,11 @@ func (h *APIKeyHandler) Revoke(c *gin.Context) {
 type PlatformHandler struct {
 	db        *services.PlatformService
 	analytics *services.PlatformAnalytics
+	extended  *services.PlatformExtended
 }
 
-func NewPlatformHandler(s *services.PlatformService, analytics *services.PlatformAnalytics) *PlatformHandler {
-	return &PlatformHandler{db: s, analytics: analytics}
+func NewPlatformHandler(s *services.PlatformService, analytics *services.PlatformAnalytics, extended *services.PlatformExtended) *PlatformHandler {
+	return &PlatformHandler{db: s, analytics: analytics, extended: extended}
 }
 
 func (h *PlatformHandler) ListPlans(c *gin.Context) {
@@ -643,6 +682,102 @@ func (h *PlatformHandler) ListPlansAdmin(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, plans)
+}
+
+func (h *PlatformHandler) BillingOverview(c *gin.Context) {
+	if h.extended == nil {
+		c.JSON(http.StatusOK, gin.H{})
+		return
+	}
+	data, err := h.extended.BillingOverview(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, data)
+}
+
+func (h *PlatformHandler) UsageReport(c *gin.Context) {
+	if h.extended == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not available"})
+		return
+	}
+	csv, err := h.extended.UsageReportCSV(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.Header("Content-Type", "text/csv")
+	c.Header("Content-Disposition", "attachment; filename=usage-report.csv")
+	c.String(http.StatusOK, csv)
+}
+
+func (h *PlatformHandler) GetSettings(c *gin.Context) {
+	key := c.Param("key")
+	if h.extended == nil {
+		c.JSON(http.StatusOK, gin.H{})
+		return
+	}
+	data, _ := h.extended.GetSettings(c.Request.Context(), key)
+	c.JSON(http.StatusOK, data)
+}
+
+func (h *PlatformHandler) UpdateSettings(c *gin.Context) {
+	key := c.Param("key")
+	var body map[string]interface{}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := h.extended.UpdateSettings(c.Request.Context(), key, body); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true})
+}
+
+func (h *PlatformHandler) ListWordlists(c *gin.Context) {
+	if h.extended == nil {
+		c.JSON(http.StatusOK, []interface{}{})
+		return
+	}
+	list, err := h.extended.ListWordlists(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, list)
+}
+
+func (h *PlatformHandler) UploadWordlist(c *gin.Context) {
+	var body struct {
+		Name    string `json:"name"`
+		Content string `json:"content"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	entry, err := h.extended.SaveWordlist(c.Request.Context(), body.Name, body.Content)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, entry)
+}
+
+func (h *PlatformHandler) Impersonate(c *gin.Context) {
+	userID, err := uuid.Parse(c.Param("userId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user id"})
+		return
+	}
+	token, expires, err := h.extended.Impersonate(c.Request.Context(), userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"token": token, "expires_at": expires})
 }
 
 func (h *PlatformHandler) Health(c *gin.Context) {

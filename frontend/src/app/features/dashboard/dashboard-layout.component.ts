@@ -127,6 +127,9 @@ export class DashboardLayoutComponent implements OnInit {
     { path: '/dashboard/platform/scanner', label: 'Scanner', icon: '&#128269;' },
     { path: '/dashboard/platform/users', label: 'Users', icon: '&#128101;' },
     { path: '/dashboard/platform/plans', label: 'Billing', icon: '&#128176;' },
+    { path: '/dashboard/platform/billing', label: 'Revenue', icon: '&#128200;' },
+    { path: '/dashboard/platform/settings', label: 'System', icon: '&#9881;' },
+    { path: '/dashboard/platform/wordlists', label: 'Wordlists', icon: '&#128196;' },
     { path: '/dashboard/platform/audit-logs', label: 'Audit', icon: '&#128221;' },
   ];
 
@@ -150,7 +153,6 @@ export class DashboardLayoutComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.perms.syncFromUser();
     const orgRoutes = this.navItems.filter(i => i.needsOrg).map(i => i.path);
     const onTenantRoute = orgRoutes.some(p => this.router.url === p || (p !== '/dashboard' && this.router.url.startsWith(p + '/')));
     if (onTenantRoute && !this.auth.hasOrganization()) {

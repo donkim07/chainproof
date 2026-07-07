@@ -30,15 +30,27 @@ export class AuthService {
     const token = localStorage.getItem('cp_token');
     if (token) {
       this.isLoggedIn.set(true);
-      this.api.get<AuthUser>('/api/v1/auth/me').subscribe({
-        next: u => {
-          this.user.set(u);
-          this.perms.syncFromUser();
-          if (u.org_slug) localStorage.setItem('cp_org_slug', u.org_slug);
-        },
-        error: () => this.logout(),
-      });
+      this.refreshMe();
     }
+  }
+
+  private applyUser(u: AuthUser) {
+    this.user.set(u);
+    if (u.role === 'super_admin') {
+      this.perms.setPermissions(['*']);
+    } else if (u.role === 'owner') {
+      this.perms.setPermissions(['*']);
+    } else {
+      this.perms.setPermissions(u.permissions ?? []);
+    }
+    if (u.org_slug) localStorage.setItem('cp_org_slug', u.org_slug);
+  }
+
+  refreshMe() {
+    this.api.get<AuthUser>('/api/v1/auth/me').subscribe({
+      next: u => this.applyUser(u),
+      error: () => this.logout(),
+    });
   }
 
   login(email: string, password: string) {
@@ -60,15 +72,8 @@ export class AuthService {
     } else {
       localStorage.removeItem('cp_org_slug');
     }
-    this.user.set(res.user);
     this.isLoggedIn.set(true);
-    this.api.get<AuthUser>('/api/v1/auth/me').subscribe({
-      next: u => {
-        this.user.set(u);
-        this.perms.syncFromUser();
-        if (u.org_slug) localStorage.setItem('cp_org_slug', u.org_slug);
-      },
-    });
+    this.refreshMe();
   }
 
   hasOrganization(): boolean {
@@ -86,8 +91,10 @@ export class AuthService {
 
   logout() {
     localStorage.removeItem('cp_token');
+    localStorage.removeItem('cp_org_slug');
     this.user.set(null);
     this.isLoggedIn.set(false);
+    this.perms.clear();
     this.router.navigate(['/login']);
   }
 }

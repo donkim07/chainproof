@@ -137,6 +137,10 @@ interface SiteAuth {
               </div>
               <div class="flex flex-wrap gap-2">
                 <app-button (click)="runDiscover()" [loading]="discovering">Discover routes</app-button>
+                <app-button variant="secondary" (click)="forceIntegrity()" [loading]="forcing">Force scan</app-button>
+                @if (selectedSite) {
+                  <a class="btn-secondary text-sm" [href]="exportUrl" target="_blank">Export CSV</a>
+                }
                 <button class="btn-secondary" (click)="startEdit(selectedSite)">Edit</button>
                 <button class="btn-ghost text-rose-400" (click)="remove(selectedSite.id)">Delete</button>
               </div>
@@ -284,6 +288,7 @@ export class SitesPageComponent implements OnInit {
   q = '';
   creating = false;
   discovering = false;
+  forcing = false;
   lastDiscovery = '—';
   manualMethod = 'GET';
   manualPath = '';
@@ -295,6 +300,11 @@ export class SitesPageComponent implements OnInit {
 
   get apiBase() {
     return this.config.apiOrigin;
+  }
+
+  get exportUrl() {
+    if (!this.selectedSite) return '#';
+    return `${this.config.apiOrigin}/api/v1/sites/${this.selectedSite.id}/export-endpoints`;
   }
 
   get envSnippet() {
@@ -406,6 +416,19 @@ CHAINPROOF_SITE_ID=${this.selectedSite.id}`;
         this.toast.error(e.error?.error || 'Discovery failed');
         this.discovering = false;
       },
+    });
+  }
+
+  forceIntegrity() {
+    if (!this.selectedSite) return;
+    this.forcing = true;
+    this.api.post<{ message: string; discovered: number }>(`/api/v1/sites/${this.selectedSite.id}/force-integrity`, {}).subscribe({
+      next: res => {
+        this.toast.success(res.message || `Scan complete — ${res.discovered} routes`);
+        this.api.get<Endpoint[]>(`/api/v1/sites/${this.selectedSite!.id}/endpoints`).subscribe(e => (this.endpoints = e));
+        this.forcing = false;
+      },
+      error: e => { this.toast.error(e.error?.error || 'Scan failed'); this.forcing = false; },
     });
   }
 
