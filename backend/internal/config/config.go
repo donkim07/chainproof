@@ -32,6 +32,8 @@ type Config struct {
 	MailFrom          string
 	MailEncryption    string
 	MailMailer        string
+	StripeSecretKey   string
+	StripeWebhookKey  string
 }
 
 func Load() (*Config, error) {
@@ -86,6 +88,8 @@ func Load() (*Config, error) {
 		MailFrom:          getEnv("MAIL_FROM", ""),
 		MailEncryption:    getEnv("MAIL_ENCRYPTION", "tls"),
 		MailMailer:        getEnv("MAIL_MAILER", "smtp"),
+		StripeSecretKey:   getEnv("STRIPE_SECRET_KEY", ""),
+		StripeWebhookKey:  getEnv("STRIPE_WEBHOOK_SECRET", ""),
 	}, nil
 }
 

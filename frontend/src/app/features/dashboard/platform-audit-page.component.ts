@@ -18,7 +18,7 @@ interface AuditLog {
   standalone: true,
   imports: [CommonModule, PageHeaderComponent, DataTableComponent],
   template: `
-    <app-page-header title="Audit Logs" subtitle="Platform-level actions and security events." badge="Super Admin"></app-page-header>
+    <app-page-header title="Audit Logs" subtitle="Super-admin actions: logins, org/plan changes, impersonation, and billing checkout attempts." badge="Super Admin"></app-page-header>
 
     <app-data-table
       [columns]="columns"

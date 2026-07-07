@@ -29,6 +29,12 @@ interface Invoice {
   plan_slug: string;
 }
 
+interface Plan {
+  name: string;
+  slug: string;
+  price_monthly: number;
+}
+
 @Component({
   selector: 'app-billing-page',
   standalone: true,
@@ -66,10 +72,21 @@ interface Invoice {
             <div>Max endpoints per site: {{ endpointLimit }}</div>
             <div>Monthly anchors: {{ anchorLimit }}</div>
           </div>
-          @if (overview.plan_slug !== 'enterprise') {
-            <p class="text-sm text-ink-500 border border-ink-700 rounded-lg p-3 bg-ink-900/50">
-              Need a higher tier? Contact <a href="mailto:support&#64;chainproof.io" class="text-signal-400 hover:underline">support&#64;chainproof.io</a> or ask your super admin to change your plan.
-            </p>
+          @if (upgradePlans.length) {
+            <h4 class="text-sm font-medium text-white mb-3">Change plan</h4>
+            <div class="space-y-2">
+              @for (p of upgradePlans; track p.slug) {
+                <div class="flex items-center justify-between gap-3 rounded-lg border border-ink-700 px-3 py-2.5 bg-ink-900/40">
+                  <div>
+                    <div class="text-sm font-medium text-white">{{ p.name }}</div>
+                    <div class="text-xs text-ink-500">{{ p.price_monthly === 0 ? 'Free' : '$' + p.price_monthly + '/mo' }}</div>
+                  </div>
+                  <a [routerLink]="['/dashboard/billing/checkout']" [queryParams]="{ plan: p.slug }">
+                    <app-button>{{ p.price_monthly === 0 ? 'Switch' : 'Upgrade' }}</app-button>
+                  </a>
+                </div>
+              }
+            </div>
           }
           <a routerLink="/pricing" class="inline-block mt-4 text-xs text-signal-400 hover:underline">Compare all plans →</a>
         </div>
@@ -115,6 +132,7 @@ interface Invoice {
 export class BillingPageComponent implements OnInit {
   overview: BillingOverview | null = null;
   invoices: Invoice[] = [];
+  plans: Plan[] = [];
   loading = true;
   error = '';
 
@@ -136,6 +154,15 @@ export class BillingPageComponent implements OnInit {
       next: i => this.invoices = i,
       error: () => {},
     });
+    this.api.getPublic<Plan[]>('/api/v1/plans').subscribe({
+      next: p => this.plans = p ?? [],
+      error: () => {},
+    });
+  }
+
+  get upgradePlans(): Plan[] {
+    if (!this.overview) return [];
+    return this.plans.filter(p => p.slug !== this.overview!.plan_slug);
   }
 
   get siteLimit() { return this.fmtLimit(this.overview?.max_sites); }

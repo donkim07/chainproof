@@ -110,7 +110,13 @@ interface Plan {
   `,
 })
 export class PricingPageComponent implements OnInit {
-  plans: Plan[] = [];
+  private static readonly FALLBACK: Plan[] = [
+    { name: 'Free', slug: 'free', price_monthly: 0, max_sites: 1, max_endpoints: 10, max_anchors_monthly: 500, features: ['1 site', 'Basic tamper alerts', 'Email support'] },
+    { name: 'Pro', slug: 'pro', price_monthly: 49, max_sites: 10, max_endpoints: 100, max_anchors_monthly: 50000, features: ['10 sites', 'Priority support', 'Advanced RBAC', 'Webhooks'] },
+    { name: 'Enterprise', slug: 'enterprise', price_monthly: 199, max_sites: -1, max_endpoints: -1, max_anchors_monthly: -1, features: ['Unlimited sites', 'Dedicated support', 'Custom SLA', 'On-prem option'] },
+  ];
+
+  plans: Plan[] = [...PricingPageComponent.FALLBACK];
   selected = signal<Plan | null>(null);
   comparison = [
     { title: 'Developer API', desc: 'Anchor hashes from your backend after each save — one HTTP call.' },
@@ -120,10 +126,18 @@ export class PricingPageComponent implements OnInit {
   ];
   constructor(private api: ApiService) {}
   ngOnInit() {
-    this.api.getPublic<Plan[]>('/api/v1/plans').subscribe(p => {
-      this.plans = p;
-      const pro = p.find(x => x.slug === 'pro');
-      if (pro) this.selected.set(pro);
+    this.api.getPublic<Plan[]>('/api/v1/plans').subscribe({
+      next: p => {
+        if (p?.length) {
+          this.plans = p;
+          const pro = p.find(x => x.slug === 'pro');
+          if (pro) this.selected.set(pro);
+        }
+      },
+      error: () => {
+        const pro = this.plans.find(x => x.slug === 'pro');
+        if (pro) this.selected.set(pro);
+      },
     });
   }
   select(plan: Plan) { this.selected.set(plan); }

@@ -1,0 +1,17 @@
+[Unit]
+Description=ChainProof API Server
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+WorkingDirectory=/www/wwwroot/chainproof.rejoda.co.tz
+EnvironmentFile=/www/wwwroot/chainproof.rejoda.co.tz/backend/.env
+ExecStart=/www/wwwroot/chainproof.rejoda.co.tz/chainproof-api
+Restart=always
+RestartSec=5
+StandardOutput=append:/www/wwwlogs/chainproof-api.log
+StandardError=append:/www/wwwlogs/chainproof-api.log
+
+[Install]
+WantedBy=multi-user.target

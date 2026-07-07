@@ -66,12 +66,13 @@ func main() {
 	inboxSvc := services.NewInboxService(tenantResolver)
 	searchSvc := services.NewDashboardSearchService(tenantResolver)
 	orgBillingSvc := services.NewOrgBillingService(platformDB, tenantResolver)
+	stripeBillingSvc := services.NewStripeBillingService(cfg, platformDB)
 
 	permSvc := services.NewPermissionService(tenantResolver)
 	platformAnalytics := services.NewPlatformAnalytics(platformDB, tenantResolver)
 	platformExtended := services.NewPlatformExtended(platformDB, tenantResolver, jwtSvc)
 
-	authHandler := handlers.NewAuthHandler(authSvc, permSvc)
+	authHandler := handlers.NewAuthHandler(authSvc, permSvc, platformSvc)
 	integrityHandler := handlers.NewIntegrityHandler(integritySvc, siteSvc, platformDB, platformSvc, tenantResolver, cfg.JWTSecret)
 	siteHandler := handlers.NewSiteHandler(siteSvc, integritySvc, platformDB, platformSvc, tenantResolver, cfg.JWTSecret)
 	apiKeyHandler := handlers.NewAPIKeyHandler(apiKeySvc, platformDB)
@@ -79,7 +80,7 @@ func main() {
 	notificationHandler := handlers.NewNotificationHandler(notificationSvc, platformDB)
 	inboxHandler := handlers.NewInboxHandler(inboxSvc, platformDB)
 	dashboardHandler := handlers.NewDashboardHandler(searchSvc, platformDB)
-	orgBillingHandler := handlers.NewOrgBillingHandler(orgBillingSvc, platformDB)
+	orgBillingHandler := handlers.NewOrgBillingHandler(orgBillingSvc, stripeBillingSvc, platformDB)
 	attributionHandler := handlers.NewAttributionHandler(attributionSvc, platformDB)
 	proxyHandler := handlers.NewProxyHandler(siteSvc, integritySvc, platformDB, cfg.JWTSecret)
 	platformHandler := handlers.NewPlatformHandler(platformSvc, platformAnalytics, platformExtended)
@@ -168,7 +169,8 @@ func main() {
 
 			protected.GET("/billing/overview", middleware.RequireTenantPermission(permSvc, "billing:read"), orgBillingHandler.Overview)
 			protected.GET("/billing/invoices", middleware.RequireTenantPermission(permSvc, "billing:read"), orgBillingHandler.Invoices)
-			protected.POST("/billing/change-plan", middleware.RequireTenantPermission(permSvc, "settings:write"), orgBillingHandler.ChangePlan)
+			protected.POST("/billing/create-checkout", middleware.RequireTenantPermission(permSvc, "billing:write"), orgBillingHandler.CreateCheckout)
+			protected.POST("/billing/change-plan", middleware.RequireTenantPermission(permSvc, "billing:write"), orgBillingHandler.ChangePlan)
 
 			protected.POST("/tampering/:id/investigate", middleware.RequireTenantPermission(permSvc, "tampering:investigate"), attributionHandler.Investigate)
 

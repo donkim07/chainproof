@@ -10,12 +10,13 @@ import (
 )
 
 type AuthHandler struct {
-	auth  *services.AuthService
-	perms *services.PermissionService
+	auth        *services.AuthService
+	perms       *services.PermissionService
+	platformSvc *services.PlatformService
 }
 
-func NewAuthHandler(auth *services.AuthService, perms *services.PermissionService) *AuthHandler {
-	return &AuthHandler{auth: auth, perms: perms}
+func NewAuthHandler(auth *services.AuthService, perms *services.PermissionService, platformSvc *services.PlatformService) *AuthHandler {
+	return &AuthHandler{auth: auth, perms: perms, platformSvc: platformSvc}
 }
 
 func (h *AuthHandler) Register(c *gin.Context) {
@@ -42,6 +43,11 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
+	}
+	if h.platformSvc != nil && resp.User.Role == "super_admin" {
+		actorID := resp.User.ID
+		h.platformSvc.WriteAudit(c.Request.Context(), &actorID, "auth.login", "platform_user", actorID.String(),
+			map[string]interface{}{"email": resp.User.Email}, c.ClientIP())
 	}
 	c.JSON(http.StatusOK, resp)
 }

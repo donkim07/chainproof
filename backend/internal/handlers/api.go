@@ -735,6 +735,13 @@ func (h *PlatformHandler) UpdatePlanAdmin(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	claims := middleware.GetClaims(c)
+	if claims != nil {
+		actorID := claims.UserID
+		h.db.WriteAudit(c.Request.Context(), &actorID, "plan.update", "plan", planID.String(), map[string]interface{}{
+			"name": plan.Name, "slug": plan.Slug,
+		}, c.ClientIP())
+	}
 	c.JSON(http.StatusOK, plan)
 }
 

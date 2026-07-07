@@ -29,6 +29,7 @@ import { ForgotPasswordPageComponent } from './features/auth/forgot-password-pag
 import { ResetPasswordPageComponent } from './features/auth/reset-password-page.component';
 import { VerifyEmailPageComponent } from './features/auth/verify-email-page.component';
 import { BillingPageComponent } from './features/dashboard/billing-page.component';
+import { BillingCheckoutPageComponent } from './features/dashboard/billing-checkout-page.component';
 import { NotificationsPageComponent } from './features/dashboard/notifications-page.component';
 
 export const routes: Routes = [
@@ -52,6 +53,7 @@ export const routes: Routes = [
       { path: 'records', component: RecordsPageComponent, canActivate: [orgGuard] },
       { path: 'api-keys', component: ApiKeysPageComponent, canActivate: [orgGuard] },
       { path: 'billing', component: BillingPageComponent, canActivate: [orgGuard] },
+      { path: 'billing/checkout', component: BillingCheckoutPageComponent, canActivate: [orgGuard] },
       { path: 'notifications', component: NotificationsPageComponent, canActivate: [orgGuard] },
       { path: 'team', component: TeamPageComponent, canActivate: [orgGuard] },
       { path: 'settings', component: SettingsPageComponent, canActivate: [orgGuard] },

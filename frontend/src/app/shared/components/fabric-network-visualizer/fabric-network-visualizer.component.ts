@@ -118,7 +118,7 @@ const PATH_NODES: Record<string, string> = {
 })
 export class FabricNetworkVisualizerComponent implements AfterViewInit, OnDestroy {
   @ViewChild('svg') svgRef!: ElementRef<SVGElement>;
-  logs = signal<string[]>(['[init] Fabric channel ready']);
+  logs = signal<string[]>([`[${new Date().toLocaleTimeString(undefined, { hour12: false })}] Fabric channel ready`]);
   private tl?: gsap.core.Timeline;
   private logTimer?: ReturnType<typeof setInterval>;
   tampered = false;
@@ -142,7 +142,7 @@ export class FabricNetworkVisualizerComponent implements AfterViewInit, OnDestro
   }
 
   private ts() {
-    return new Date().toISOString().slice(11, 19);
+    return new Date().toLocaleTimeString(undefined, { hour12: false });
   }
 
   private addLog() {
