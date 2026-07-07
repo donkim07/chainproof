@@ -523,11 +523,12 @@ func (h *APIKeyHandler) Revoke(c *gin.Context) {
 }
 
 type PlatformHandler struct {
-	db *services.PlatformService
+	db        *services.PlatformService
+	analytics *services.PlatformAnalytics
 }
 
-func NewPlatformHandler(s *services.PlatformService) *PlatformHandler {
-	return &PlatformHandler{db: s}
+func NewPlatformHandler(s *services.PlatformService, analytics *services.PlatformAnalytics) *PlatformHandler {
+	return &PlatformHandler{db: s, analytics: analytics}
 }
 
 func (h *PlatformHandler) ListPlans(c *gin.Context) {
@@ -552,12 +553,49 @@ func (h *PlatformHandler) ListOrganizations(c *gin.Context) {
 }
 
 func (h *PlatformHandler) Overview(c *gin.Context) {
+	if h.analytics != nil {
+		overview, err := h.analytics.ExtendedOverview(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, overview)
+		return
+	}
 	overview, err := h.db.Stats(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, overview)
+}
+
+func (h *PlatformHandler) ScannerStatus(c *gin.Context) {
+	if h.analytics == nil {
+		c.JSON(http.StatusOK, services.ScannerStatus{})
+		return
+	}
+	c.JSON(http.StatusOK, h.analytics.ScannerStatus())
+}
+
+func (h *PlatformHandler) ListAllSites(c *gin.Context) {
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "100"))
+	sites, err := h.analytics.ListAllSites(c.Request.Context(), limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, sites)
+}
+
+func (h *PlatformHandler) ListPlatformIncidents(c *gin.Context) {
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
+	incidents, err := h.analytics.ListOpenIncidents(c.Request.Context(), limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, incidents)
 }
 
 func (h *PlatformHandler) ListUsers(c *gin.Context) {

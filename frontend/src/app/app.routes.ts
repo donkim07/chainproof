@@ -18,6 +18,10 @@ import { PlatformOrganizationsPageComponent } from './features/dashboard/platfor
 import { PlatformUsersPageComponent } from './features/dashboard/platform-users-page.component';
 import { PlatformPlansPageComponent } from './features/dashboard/platform-plans-page.component';
 import { PlatformAuditPageComponent } from './features/dashboard/platform-audit-page.component';
+import { PlatformScannerPageComponent } from './features/dashboard/platform-scanner-page.component';
+import { PlatformEndpointsPageComponent } from './features/dashboard/platform-endpoints-page.component';
+import { PlatformIncidentsPageComponent } from './features/dashboard/platform-incidents-page.component';
+import { authGuard, orgGuard, superAdminGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   { path: '', component: LandingPageComponent },
@@ -28,20 +32,24 @@ export const routes: Routes = [
   {
     path: 'dashboard',
     component: DashboardLayoutComponent,
+    canActivate: [authGuard],
     children: [
-      { path: '', component: DashboardHomeComponent },
-      { path: 'analytics', component: AnalyticsPageComponent },
-      { path: 'sites', component: SitesPageComponent },
-      { path: 'incidents', component: IncidentsPageComponent },
-      { path: 'records', component: RecordsPageComponent },
-      { path: 'api-keys', component: ApiKeysPageComponent },
-      { path: 'team', component: TeamPageComponent },
-      { path: 'settings', component: SettingsPageComponent },
-      { path: 'platform', component: PlatformOverviewPageComponent },
-      { path: 'platform/organizations', component: PlatformOrganizationsPageComponent },
-      { path: 'platform/users', component: PlatformUsersPageComponent },
-      { path: 'platform/plans', component: PlatformPlansPageComponent },
-      { path: 'platform/audit-logs', component: PlatformAuditPageComponent },
+      { path: '', component: DashboardHomeComponent, canActivate: [orgGuard] },
+      { path: 'analytics', component: AnalyticsPageComponent, canActivate: [orgGuard] },
+      { path: 'sites', component: SitesPageComponent, canActivate: [orgGuard] },
+      { path: 'incidents', component: IncidentsPageComponent, canActivate: [orgGuard] },
+      { path: 'records', component: RecordsPageComponent, canActivate: [orgGuard] },
+      { path: 'api-keys', component: ApiKeysPageComponent, canActivate: [orgGuard] },
+      { path: 'team', component: TeamPageComponent, canActivate: [orgGuard] },
+      { path: 'settings', component: SettingsPageComponent, canActivate: [orgGuard] },
+      { path: 'platform', component: PlatformOverviewPageComponent, canActivate: [superAdminGuard] },
+      { path: 'platform/organizations', component: PlatformOrganizationsPageComponent, canActivate: [superAdminGuard] },
+      { path: 'platform/endpoints', component: PlatformEndpointsPageComponent, canActivate: [superAdminGuard] },
+      { path: 'platform/incidents', component: PlatformIncidentsPageComponent, canActivate: [superAdminGuard] },
+      { path: 'platform/scanner', component: PlatformScannerPageComponent, canActivate: [superAdminGuard] },
+      { path: 'platform/users', component: PlatformUsersPageComponent, canActivate: [superAdminGuard] },
+      { path: 'platform/plans', component: PlatformPlansPageComponent, canActivate: [superAdminGuard] },
+      { path: 'platform/audit-logs', component: PlatformAuditPageComponent, canActivate: [superAdminGuard] },
     ],
   },
   { path: '**', redirectTo: '' },

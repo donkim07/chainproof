@@ -18,6 +18,7 @@ import (
 func discoveryPriority(sources []string) int {
 	weights := map[string]int{
 		"openapi":    100,
+		"scanner":    90,
 		"javascript": 80,
 		"html":       60,
 		"robots":     50,
@@ -74,7 +75,7 @@ func addDiscoverySource(candidates map[string][]string, path, source string) {
 }
 
 func primarySource(sources []string) string {
-	order := []string{"openapi", "javascript", "html", "robots", "wordlist"}
+	order := []string{"openapi", "scanner", "javascript", "html", "robots", "wordlist"}
 	for _, want := range order {
 		for _, s := range sources {
 			if s == want {
@@ -106,6 +107,11 @@ func (s *SiteService) collectDiscoveryCandidates(ctx context.Context, base *url.
 	}
 	for _, p := range s.discoverFromJSBundles(ctx, base) {
 		addDiscoverySource(passive, p, "javascript")
+	}
+	if s.scanner != nil && s.scanner.AnyToolAvailable() {
+		for _, p := range s.scanner.DiscoverPaths(ctx, base) {
+			addDiscoverySource(passive, p, "scanner")
+		}
 	}
 	return passive, wordlist
 }

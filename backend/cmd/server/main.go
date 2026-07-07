@@ -63,7 +63,10 @@ func main() {
 	attributionSvc := services.NewAttributionService(tenantResolver)
 	platformSvc := services.NewPlatformService(platformDB)
 
-	authHandler := handlers.NewAuthHandler(authSvc)
+	permSvc := services.NewPermissionService(tenantResolver)
+	platformAnalytics := services.NewPlatformAnalytics(platformDB, tenantResolver)
+
+	authHandler := handlers.NewAuthHandler(authSvc, permSvc)
 	integrityHandler := handlers.NewIntegrityHandler(integritySvc, siteSvc, platformDB, cfg.JWTSecret)
 	siteHandler := handlers.NewSiteHandler(siteSvc, integritySvc, platformDB, cfg.JWTSecret)
 	apiKeyHandler := handlers.NewAPIKeyHandler(apiKeySvc, platformDB)
@@ -71,7 +74,7 @@ func main() {
 	notificationHandler := handlers.NewNotificationHandler(notificationSvc, platformDB)
 	attributionHandler := handlers.NewAttributionHandler(attributionSvc, platformDB)
 	proxyHandler := handlers.NewProxyHandler(siteSvc, integritySvc, platformDB, cfg.JWTSecret)
-	platformHandler := handlers.NewPlatformHandler(platformSvc)
+	platformHandler := handlers.NewPlatformHandler(platformSvc, platformAnalytics)
 
 	if cfg.Env == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -111,12 +114,12 @@ func main() {
 			protected.POST("/integrity/scan-tamper", integrityHandler.ScanTamper)
 			protected.GET("/tampering", integrityHandler.ListIncidents)
 
-			protected.GET("/sites", siteHandler.List)
-			protected.POST("/sites", siteHandler.Create)
-			protected.GET("/sites/:id", siteHandler.Get)
-			protected.PUT("/sites/:id", siteHandler.Update)
-			protected.DELETE("/sites/:id", siteHandler.Delete)
-			protected.POST("/sites/:id/discover", siteHandler.Discover)
+			protected.GET("/sites", middleware.RequireTenantPermission(permSvc, "sites:read"), siteHandler.List)
+			protected.POST("/sites", middleware.RequireTenantPermission(permSvc, "sites:write"), siteHandler.Create)
+			protected.GET("/sites/:id", middleware.RequireTenantPermission(permSvc, "sites:read"), siteHandler.Get)
+			protected.PUT("/sites/:id", middleware.RequireTenantPermission(permSvc, "sites:write"), siteHandler.Update)
+			protected.DELETE("/sites/:id", middleware.RequireTenantPermission(permSvc, "sites:write"), siteHandler.Delete)
+			protected.POST("/sites/:id/discover", middleware.RequireTenantPermission(permSvc, "sites:write"), siteHandler.Discover)
 			protected.GET("/sites/:id/endpoints", siteHandler.ListEndpoints)
 			protected.POST("/sites/:id/endpoints", siteHandler.AddEndpoint)
 			protected.PATCH("/sites/:id/endpoints/:epId", siteHandler.ToggleEndpoint)
@@ -128,8 +131,8 @@ func main() {
 			protected.Any("/proxy/:id/*path", proxyHandler.Forward)
 
 			protected.GET("/api-keys", apiKeyHandler.List)
-			protected.POST("/api-keys", apiKeyHandler.Create)
-			protected.DELETE("/api-keys/:id", apiKeyHandler.Revoke)
+			protected.POST("/api-keys", middleware.RequireTenantPermission(permSvc, "api_keys:write"), apiKeyHandler.Create)
+			protected.DELETE("/api-keys/:id", middleware.RequireTenantPermission(permSvc, "api_keys:write"), apiKeyHandler.Revoke)
 
 			protected.GET("/team/users", teamHandler.ListUsers)
 			protected.POST("/team/users", teamHandler.CreateUser)
@@ -151,6 +154,9 @@ func main() {
 				admin.GET("/users", platformHandler.ListUsers)
 				admin.GET("/audit-logs", platformHandler.ListAuditLogs)
 				admin.GET("/plans", platformHandler.ListPlansAdmin)
+				admin.GET("/scanner", platformHandler.ScannerStatus)
+				admin.GET("/sites", platformHandler.ListAllSites)
+				admin.GET("/incidents", platformHandler.ListPlatformIncidents)
 			}
 		}
 

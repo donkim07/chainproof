@@ -6,30 +6,30 @@ import { AuthService } from '../../core/services/auth.service';
 import { ToastService } from '../../core/services/toast.service';
 import { ButtonComponent } from '../../shared/components/button/button.component';
 import { PublicNavComponent } from '../../shared/components/public-nav/public-nav.component';
+import { SecureInputComponent } from '../../shared/components/secure-input/secure-input.component';
 
 @Component({
   selector: 'app-login-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, ButtonComponent, PublicNavComponent],
+  imports: [CommonModule, FormsModule, RouterLink, ButtonComponent, PublicNavComponent, SecureInputComponent],
   template: `
     <app-public-nav />
-    <div class="flex min-h-screen items-center justify-center px-4 pt-20 pb-12">
-      <div class="w-full max-w-md">
-        <div class="card animate-slide-up glow-border">
+    <div class="relative flex min-h-screen items-center justify-center px-4 pt-20 pb-12">
+      <div class="hero-glow absolute inset-0 -z-10 opacity-60"></div>
+      <div class="w-full max-w-md animate-slide-up">
+        <div class="card glow-border">
           <div class="mb-6 text-center">
-            <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-emerald-500 text-xl font-bold shadow-lg">CP</div>
+            <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-emerald-500 text-xl font-bold shadow-lg shadow-brand-600/25">CP</div>
             <h1 class="text-2xl font-bold text-white">Welcome back</h1>
-            <p class="text-sm text-slate-400">Sign in to your ChainProof dashboard</p>
+            <p class="text-sm text-slate-400">Secure sign-in to your dashboard</p>
           </div>
-          <form (ngSubmit)="login()" class="space-y-4">
+          <form (ngSubmit)="login()" class="space-y-4" autocomplete="on">
             <div>
-              <label class="mb-1 block text-sm text-slate-400">Email</label>
-              <input class="input-field" type="email" [(ngModel)]="email" name="email" required placeholder="you@company.com" />
+              <label class="mb-1.5 block text-sm font-medium text-slate-300">Email</label>
+              <input class="input-field" type="email" [(ngModel)]="email" name="email" required
+                placeholder="you@company.com" autocomplete="email" inputmode="email" />
             </div>
-            <div>
-              <label class="mb-1 block text-sm text-slate-400">Password</label>
-              <input class="input-field" type="password" [(ngModel)]="password" name="password" required />
-            </div>
+            <app-secure-input label="Password" [(value)]="password" autocomplete="current-password" />
             <app-button type="submit" [fullWidth]="true" [loading]="loading">Sign In</app-button>
           </form>
           <p class="mt-6 text-center text-sm text-slate-400">
@@ -47,15 +47,13 @@ export class LoginPageComponent implements OnInit {
   constructor(private auth: AuthService, private toast: ToastService, private router: Router) {}
 
   ngOnInit() {
-    if (this.auth.isLoggedIn()) {
-      this.router.navigateByUrl(this.auth.postLoginPath());
-    }
+    if (this.auth.isLoggedIn()) this.router.navigateByUrl(this.auth.postLoginPath());
   }
 
   login() {
     this.loading = true;
-    this.auth.login(this.email, this.password).subscribe({
-      next: () => { this.router.navigateByUrl(this.auth.postLoginPath()); },
+    this.auth.login(this.email.trim(), this.password).subscribe({
+      next: () => this.router.navigateByUrl(this.auth.postLoginPath()),
       error: e => { this.toast.error(e.error?.error || 'Login failed'); this.loading = false; },
     });
   }

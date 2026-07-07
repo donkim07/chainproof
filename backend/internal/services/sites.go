@@ -23,14 +23,16 @@ import (
 )
 
 type SiteService struct {
-	tenant *tenant.Resolver
-	client *http.Client
+	tenant  *tenant.Resolver
+	client  *http.Client
+	scanner *ScannerService
 }
 
 func NewSiteService(t *tenant.Resolver) *SiteService {
 	return &SiteService{
-		tenant: t,
-		client: &http.Client{Timeout: 10 * time.Second},
+		tenant:  t,
+		client:  &http.Client{Timeout: 10 * time.Second},
+		scanner: NewScannerService(),
 	}
 }
 

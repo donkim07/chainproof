@@ -2,6 +2,7 @@ import { Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { tap } from 'rxjs/operators';
 import { ApiService } from './api.service';
+import { PermissionService } from './permission.service';
 
 export interface AuthUser {
   id: string;
@@ -10,6 +11,7 @@ export interface AuthUser {
   role: string;
   org_slug?: string;
   org_name?: string;
+  permissions?: string[];
 }
 
 export interface AuthResponse {
@@ -24,13 +26,14 @@ export class AuthService {
   user = signal<AuthUser | null>(null);
   isLoggedIn = signal(false);
 
-  constructor(private api: ApiService, private router: Router) {
+  constructor(private api: ApiService, private router: Router, private perms: PermissionService) {
     const token = localStorage.getItem('cp_token');
     if (token) {
       this.isLoggedIn.set(true);
       this.api.get<AuthUser>('/api/v1/auth/me').subscribe({
         next: u => {
           this.user.set(u);
+          this.perms.syncFromUser();
           if (u.org_slug) localStorage.setItem('cp_org_slug', u.org_slug);
         },
         error: () => this.logout(),
@@ -59,9 +62,13 @@ export class AuthService {
     }
     this.user.set(res.user);
     this.isLoggedIn.set(true);
-    if (res.user.org_slug) {
-      localStorage.setItem('cp_org_slug', res.user.org_slug);
-    }
+    this.api.get<AuthUser>('/api/v1/auth/me').subscribe({
+      next: u => {
+        this.user.set(u);
+        this.perms.syncFromUser();
+        if (u.org_slug) localStorage.setItem('cp_org_slug', u.org_slug);
+      },
+    });
   }
 
   hasOrganization(): boolean {

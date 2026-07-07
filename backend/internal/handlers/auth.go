@@ -10,11 +10,12 @@ import (
 )
 
 type AuthHandler struct {
-	auth *services.AuthService
+	auth  *services.AuthService
+	perms *services.PermissionService
 }
 
-func NewAuthHandler(auth *services.AuthService) *AuthHandler {
-	return &AuthHandler{auth: auth}
+func NewAuthHandler(auth *services.AuthService, perms *services.PermissionService) *AuthHandler {
+	return &AuthHandler{auth: auth, perms: perms}
 }
 
 func (h *AuthHandler) Register(c *gin.Context) {
@@ -52,5 +53,17 @@ func (h *AuthHandler) Me(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
 		return
 	}
-	c.JSON(http.StatusOK, user)
+	resp := gin.H{
+		"id": user.ID, "email": user.Email, "full_name": user.FullName,
+		"role": user.Role, "org_slug": user.OrgSlug, "org_name": user.OrgName,
+	}
+	if claims.OrgSlug != "" && h.perms != nil {
+		if perms, err := h.perms.UserPermissions(c.Request.Context(), claims.OrgSlug, claims.Email); err == nil {
+			resp["permissions"] = perms
+		}
+	}
+	if claims.Role == "super_admin" {
+		resp["permissions"] = []string{"*"}
+	}
+	c.JSON(http.StatusOK, resp)
 }
