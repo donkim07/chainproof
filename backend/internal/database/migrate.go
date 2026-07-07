@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -41,7 +42,7 @@ func RunSQLMigrations(ctx context.Context, pool *pgxpool.Pool, migrationsDir str
 			return err
 		}
 		if _, err := pool.Exec(ctx, string(sql)); err != nil {
-			return err
+			return fmt.Errorf("migration %s: %w", name, err)
 		}
 		if _, err := pool.Exec(ctx, `INSERT INTO schema_migrations (name) VALUES ($1) ON CONFLICT DO NOTHING`, name); err != nil {
 			return err

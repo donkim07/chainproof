@@ -4,6 +4,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"fmt"
 
 	"github.com/joho/godotenv"
 )
@@ -32,12 +33,14 @@ type Config struct {
 	MailFrom          string
 	MailEncryption    string
 	MailMailer        string
+	MailTLSServerName string
 	StripeSecretKey   string
 	StripeWebhookKey  string
 }
 
 func Load() (*Config, error) {
 	_ = godotenv.Load()
+	_ = godotenv.Load("backend/.env")
 
 	expiry := 24
 	if v := os.Getenv("JWT_EXPIRY_HOURS"); v != "" {
@@ -85,9 +88,10 @@ func Load() (*Config, error) {
 		MailPort:          mailPort,
 		MailUsername:      getEnv("MAIL_USERNAME", ""),
 		MailPassword:      getEnv("MAIL_PASSWORD", ""),
-		MailFrom:          getEnv("MAIL_FROM", ""),
+		MailFrom:          firstNonEmpty(getEnv("MAIL_FROM", ""), formatFrom(getEnv("MAIL_FROM_NAME", ""), getEnv("MAIL_FROM_ADDRESS", "")), getEnv("MAIL_USERNAME", "")),
 		MailEncryption:    getEnv("MAIL_ENCRYPTION", "tls"),
 		MailMailer:        getEnv("MAIL_MAILER", "smtp"),
+		MailTLSServerName: getEnv("MAIL_TLS_SERVER_NAME", ""),
 		StripeSecretKey:   getEnv("STRIPE_SECRET_KEY", ""),
 		StripeWebhookKey:  getEnv("STRIPE_WEBHOOK_SECRET", ""),
 	}, nil
@@ -98,4 +102,22 @@ func getEnv(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if strings.TrimSpace(v) != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+func formatFrom(name, address string) string {
+	name = strings.TrimSpace(name)
+	address = strings.TrimSpace(address)
+	if name != "" && address != "" {
+		return fmt.Sprintf("%s <%s>", name, address)
+	}
+	return address
 }

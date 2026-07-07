@@ -4,11 +4,15 @@ import (
 	"bytes"
 	"crypto/tls"
 	"fmt"
+	"net"
 	"net/smtp"
+	"regexp"
 	"strings"
 
 	"github.com/chainproof/baas/internal/config"
 )
+
+var fromEmailRe = regexp.MustCompile(`<([^>]+)>`)
 
 type EmailService struct {
 	cfg *config.Config
@@ -25,56 +29,115 @@ func (s *EmailService) Enabled() bool {
 func (s *EmailService) Send(to, subject, htmlBody string) error {
 	if !s.Enabled() {
 		fmt.Printf("[email-dev] To: %s | %s\n%s\n", to, subject, htmlBody)
-		return nil
+		return fmt.Errorf("email not configured: set MAIL_HOST and MAIL_USERNAME")
 	}
-	from := s.cfg.MailFrom
-	if from == "" {
-		from = s.cfg.MailUsername
+	displayFrom := s.cfg.MailFrom
+	if displayFrom == "" {
+		displayFrom = s.cfg.MailUsername
+	}
+	smtpFrom := parseFromEmail(displayFrom)
+	if smtpFrom == "" {
+		smtpFrom = s.cfg.MailUsername
 	}
 	msg := bytes.NewBufferString(fmt.Sprintf(
 		"From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n%s",
-		from, to, subject, htmlBody,
+		displayFrom, to, subject, htmlBody,
 	))
 	addr := fmt.Sprintf("%s:%d", s.cfg.MailHost, s.cfg.MailPort)
 	auth := smtp.PlainAuth("", s.cfg.MailUsername, s.cfg.MailPassword, s.cfg.MailHost)
-	if s.cfg.MailEncryption == "tls" {
-		return sendMailTLS(addr, auth, from, []string{to}, msg.Bytes())
+
+	switch strings.ToLower(s.cfg.MailEncryption) {
+	case "ssl", "smtps":
+		return sendMailImplicitTLS(addr, auth, smtpFrom, []string{to}, msg.Bytes(), s.tlsServerName())
+	case "tls", "starttls":
+		return sendMailSTARTTLS(addr, auth, smtpFrom, []string{to}, msg.Bytes(), s.tlsServerName())
+	default:
+		return smtp.SendMail(addr, auth, smtpFrom, []string{to}, msg.Bytes())
 	}
-	return smtp.SendMail(addr, auth, from, []string{to}, msg.Bytes())
 }
 
-func sendMailTLS(addr string, auth smtp.Auth, from string, to []string, msg []byte) error {
-	host := strings.Split(addr, ":")[0]
-	conn, err := tls.Dial("tcp", addr, &tls.Config{ServerName: host})
-	if err != nil {
-		return err
+func (s *EmailService) tlsServerName() string {
+	if s.cfg.MailTLSServerName != "" {
+		return s.cfg.MailTLSServerName
 	}
+	host, _, err := net.SplitHostPort(fmt.Sprintf("%s:%d", s.cfg.MailHost, s.cfg.MailPort))
+	if err != nil {
+		return s.cfg.MailHost
+	}
+	return host
+}
+
+// sendMailImplicitTLS — port 465 (SMTPS)
+func sendMailImplicitTLS(addr string, auth smtp.Auth, from string, to []string, msg []byte, serverName string) error {
+	conn, err := tls.Dial("tcp", addr, &tls.Config{ServerName: serverName})
+	if err != nil {
+		return fmt.Errorf("tls dial: %w", err)
+	}
+	host, _, _ := net.SplitHostPort(addr)
+	if host == "" {
+		host = serverName
+	}
+	return sendSMTPClient(conn, host, auth, from, to, msg, serverName)
+}
+
+// sendMailSTARTTLS — port 587 (most hosting providers)
+func sendMailSTARTTLS(addr string, auth smtp.Auth, from string, to []string, msg []byte, serverName string) error {
+	conn, err := net.Dial("tcp", addr)
+	if err != nil {
+		return fmt.Errorf("dial: %w", err)
+	}
+	host, _, _ := net.SplitHostPort(addr)
+	if host == "" {
+		host = serverName
+	}
+	return sendSMTPClient(conn, host, auth, from, to, msg, serverName)
+}
+
+func sendSMTPClient(conn net.Conn, host string, auth smtp.Auth, from string, to []string, msg []byte, serverName string) error {
 	client, err := smtp.NewClient(conn, host)
 	if err != nil {
-		return err
+		conn.Close()
+		return fmt.Errorf("smtp client: %w", err)
 	}
 	defer client.Close()
+
+	if ok, _ := client.Extension("STARTTLS"); ok {
+		if err := client.StartTLS(&tls.Config{ServerName: serverName}); err != nil {
+			return fmt.Errorf("starttls: %w", err)
+		}
+	}
 	if auth != nil {
 		if err := client.Auth(auth); err != nil {
-			return err
+			return fmt.Errorf("auth: %w", err)
 		}
 	}
 	if err := client.Mail(from); err != nil {
-		return err
+		return fmt.Errorf("mail from: %w", err)
 	}
 	for _, r := range to {
 		if err := client.Rcpt(r); err != nil {
-			return err
+			return fmt.Errorf("rcpt %s: %w", r, err)
 		}
 	}
 	w, err := client.Data()
 	if err != nil {
-		return err
+		return fmt.Errorf("data: %w", err)
 	}
 	if _, err := w.Write(msg); err != nil {
-		return err
+		return fmt.Errorf("write: %w", err)
 	}
-	return w.Close()
+	if err := w.Close(); err != nil {
+		return fmt.Errorf("close data: %w", err)
+	}
+	return client.Quit()
+}
+
+func parseFromEmail(from string) string {
+	from = strings.TrimSpace(from)
+	if m := fromEmailRe.FindStringSubmatch(from); len(m) == 2 {
+		return strings.TrimSpace(m[1])
+	}
+	return from
 }
 
 func EmailTemplate(title, bodyHTML, ctaLabel, ctaURL string) string {

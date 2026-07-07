@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/chainproof/baas/internal/middleware"
@@ -83,7 +84,9 @@ func (h *AuthHandler) ForgotPassword(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	_ = h.auth.ForgotPassword(c.Request.Context(), body.Email)
+	if err := h.auth.ForgotPassword(c.Request.Context(), body.Email); err != nil {
+		log.Printf("forgot-password email: %v", err)
+	}
 	c.JSON(http.StatusOK, gin.H{"message": "If that email exists, we sent reset instructions."})
 }
 
