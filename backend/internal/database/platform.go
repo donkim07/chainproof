@@ -3,8 +3,6 @@ package database
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -31,23 +29,7 @@ func (db *PlatformDB) Close() {
 }
 
 func (db *PlatformDB) RunMigrations(ctx context.Context, migrationsDir string) error {
-	entries, err := os.ReadDir(migrationsDir)
-	if err != nil {
-		return err
-	}
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".sql") {
-			continue
-		}
-		sql, err := os.ReadFile(filepath.Join(migrationsDir, e.Name()))
-		if err != nil {
-			return err
-		}
-		if _, err := db.Pool.Exec(ctx, string(sql)); err != nil {
-			return fmt.Errorf("migration %s: %w", e.Name(), err)
-		}
-	}
-	return nil
+	return RunSQLMigrations(ctx, db.Pool, migrationsDir)
 }
 
 var slugRe = regexp.MustCompile(`[^a-z0-9]+`)
@@ -93,23 +75,7 @@ func (db *PlatformDB) ProvisionTenantDB(ctx context.Context, host, port, user, p
 	}
 	defer tenantPool.Close()
 
-	entries, err := os.ReadDir(migrationsDir)
-	if err != nil {
-		return err
-	}
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".sql") {
-			continue
-		}
-		sql, err := os.ReadFile(filepath.Join(migrationsDir, e.Name()))
-		if err != nil {
-			return err
-		}
-		if _, err := tenantPool.Exec(ctx, string(sql)); err != nil {
-			return fmt.Errorf("tenant migration %s: %w", e.Name(), err)
-		}
-	}
-	return nil
+	return RunSQLMigrations(ctx, tenantPool, migrationsDir)
 }
 
 func TenantPool(ctx context.Context, host, port, user, password, dbName string) (*pgxpool.Pool, error) {

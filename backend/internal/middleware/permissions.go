@@ -16,7 +16,11 @@ func RequireTenantPermission(perms *services.PermissionService, permission strin
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 			return
 		}
-		if claims.Role == "super_admin" || claims.Role == "owner" {
+		if claims.Role == "super_admin" {
+			c.Next()
+			return
+		}
+		if claims.Role == "owner" && permission != "billing:read" && permission != "billing:write" {
 			c.Next()
 			return
 		}

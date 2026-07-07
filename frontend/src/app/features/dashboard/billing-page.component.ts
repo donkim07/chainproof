@@ -67,14 +67,9 @@ interface Invoice {
             <div>Monthly anchors: {{ anchorLimit }}</div>
           </div>
           @if (overview.plan_slug !== 'enterprise') {
-            <div class="flex flex-wrap gap-2">
-              @if (overview.plan_slug === 'free') {
-                <app-button (click)="upgrade('pro')" [loading]="changing === 'pro'">Upgrade to Pro</app-button>
-              }
-              @if (overview.plan_slug !== 'enterprise') {
-                <app-button variant="secondary" (click)="upgrade('enterprise')" [loading]="changing === 'enterprise'">Contact Enterprise</app-button>
-              }
-            </div>
+            <p class="text-sm text-ink-500 border border-ink-700 rounded-lg p-3 bg-ink-900/50">
+              Need a higher tier? Contact <a href="mailto:support&#64;chainproof.io" class="text-signal-400 hover:underline">support&#64;chainproof.io</a> or ask your super admin to change your plan.
+            </p>
           }
           <a routerLink="/pricing" class="inline-block mt-4 text-xs text-signal-400 hover:underline">Compare all plans →</a>
         </div>
@@ -120,7 +115,6 @@ interface Invoice {
 export class BillingPageComponent implements OnInit {
   overview: BillingOverview | null = null;
   invoices: Invoice[] = [];
-  changing = '';
   loading = true;
   error = '';
 
@@ -154,17 +148,5 @@ export class BillingPageComponent implements OnInit {
     if (max < 0) return 0;
     if (!max) return 0;
     return Math.min(100, Math.round((used / max) * 100));
-  }
-
-  upgrade(plan: string) {
-    this.changing = plan;
-    this.api.post('/api/v1/billing/change-plan', { plan_slug: plan }).subscribe({
-      next: () => {
-        this.toast.success(`Plan updated to ${plan}`);
-        this.changing = '';
-        this.load();
-      },
-      error: e => { this.toast.error(e.error?.error || 'Upgrade failed'); this.changing = ''; },
-    });
   }
 }

@@ -143,15 +143,26 @@ func (p *PlatformExtended) BillingOverview(ctx context.Context) (map[string]inte
 }
 
 func (p *PlatformExtended) UsageReportCSV(ctx context.Context) (string, error) {
-	billing, err := p.BillingOverview(ctx)
+	rows, err := p.platform.Pool.Query(ctx, `
+		SELECT o.name, o.slug, u.metric, u.value, u.period_start, u.period_end
+		FROM usage_records u
+		JOIN organizations o ON o.id = u.organization_id
+		ORDER BY u.period_start DESC, o.name, u.metric
+		LIMIT 500`)
 	if err != nil {
 		return "", err
 	}
+	defer rows.Close()
 	var b strings.Builder
-	b.WriteString("org_name,org_slug,plan,mrr,status\n")
-	for _, row := range billing["clients"].([]map[string]interface{}) {
-		b.WriteString(fmt.Sprintf("%q,%q,%q,%v,%q\n",
-			row["org_name"], row["org_slug"], row["plan"], row["mrr"], row["status"]))
+	b.WriteString("org_name,org_slug,metric,value,period_start,period_end\n")
+	for rows.Next() {
+		var name, slug, metric string
+		var value int64
+		var start, end time.Time
+		if rows.Scan(&name, &slug, &metric, &value, &start, &end) != nil {
+			continue
+		}
+		b.WriteString(fmt.Sprintf("%q,%q,%q,%v,%q,%q\n", name, slug, metric, value, start.Format("2006-01-02"), end.Format("2006-01-02")))
 	}
 	return b.String(), nil
 }

@@ -48,6 +48,9 @@ func (h *IntegrityHandler) Anchor(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	if h.platformSvc != nil {
+		_ = h.platformSvc.IncrementUsage(c.Request.Context(), slug, "anchors", 1)
+	}
 	c.JSON(http.StatusCreated, rec)
 }
 
@@ -691,6 +694,19 @@ func (h *PlatformHandler) UpdateOrganization(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	claims := middleware.GetClaims(c)
+	var actorID *uuid.UUID
+	if claims != nil {
+		actorID = &claims.UserID
+	}
+	meta := map[string]interface{}{}
+	if body.Active != nil {
+		meta["active"] = *body.Active
+	}
+	if body.PlanSlug != nil {
+		meta["plan_slug"] = *body.PlanSlug
+	}
+	h.db.WriteAudit(c.Request.Context(), actorID, "organization.update", "organization", orgID, meta, c.ClientIP())
 	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
@@ -815,7 +831,23 @@ func (h *PlatformHandler) Impersonate(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	claims := middleware.GetClaims(c)
+	var actorID *uuid.UUID
+	if claims != nil {
+		actorID = &claims.UserID
+	}
+	h.db.WriteAudit(c.Request.Context(), actorID, "user.impersonate", "platform_user", userID.String(),
+		map[string]interface{}{"target_user_id": userID.String()}, c.ClientIP())
 	c.JSON(http.StatusOK, gin.H{"token": token, "expires_at": expires})
+}
+
+func (h *PlatformHandler) ListUsageRecords(c *gin.Context) {
+	records, err := h.db.ListUsageRecords(c.Request.Context(), 200)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, records)
 }
 
 func (h *PlatformHandler) Health(c *gin.Context) {

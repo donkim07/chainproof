@@ -51,7 +51,7 @@ func main() {
 		log.Printf("seed admin warning: %v", err)
 	}
 
-	tenantResolver := tenant.NewResolver(platformDB, cfg)
+	tenantResolver := tenant.NewResolver(platformDB, cfg, tenantMigrations)
 	defer tenantResolver.Close()
 
 	fabricClient := blockchain.NewClient(cfg.FabricGatewayURL, cfg.FabricGatewayKey, cfg.FabricDevMock)
@@ -166,8 +166,8 @@ func main() {
 			protected.GET("/inbox/unread-count", middleware.RequireTenantPermission(permSvc, "settings:read"), inboxHandler.UnreadCount)
 			protected.PATCH("/inbox/:id/read", middleware.RequireTenantPermission(permSvc, "settings:read"), inboxHandler.MarkRead)
 
-			protected.GET("/billing/overview", orgBillingHandler.Overview)
-			protected.GET("/billing/invoices", orgBillingHandler.Invoices)
+			protected.GET("/billing/overview", middleware.RequireTenantPermission(permSvc, "billing:read"), orgBillingHandler.Overview)
+			protected.GET("/billing/invoices", middleware.RequireTenantPermission(permSvc, "billing:read"), orgBillingHandler.Invoices)
 			protected.POST("/billing/change-plan", middleware.RequireTenantPermission(permSvc, "settings:write"), orgBillingHandler.ChangePlan)
 
 			protected.POST("/tampering/:id/investigate", middleware.RequireTenantPermission(permSvc, "tampering:investigate"), attributionHandler.Investigate)
@@ -184,6 +184,7 @@ func main() {
 				admin.GET("/plans", platformHandler.ListPlansAdmin)
 				admin.PATCH("/plans/:id", platformHandler.UpdatePlanAdmin)
 				admin.GET("/billing", platformHandler.BillingOverview)
+				admin.GET("/usage-records", platformHandler.ListUsageRecords)
 				admin.GET("/reports/usage", platformHandler.UsageReport)
 				admin.GET("/settings/:key", platformHandler.GetSettings)
 				admin.PUT("/settings/:key", platformHandler.UpdateSettings)

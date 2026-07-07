@@ -194,9 +194,6 @@ func (s *TeamService) SetRolePermissions(ctx context.Context, orgSlug, roleName 
 	if err != nil {
 		return fmt.Errorf("role not found")
 	}
-	if roleName == "admin" {
-		return fmt.Errorf("admin role permissions cannot be modified")
-	}
 	_, err = pool.Exec(ctx, `DELETE FROM role_permissions WHERE role_id = $1`, roleID)
 	if err != nil {
 		return err

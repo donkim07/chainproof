@@ -200,3 +200,71 @@ func (s *PlatformService) UpdatePlan(ctx context.Context, planID uuid.UUID, req 
 	_ = json.Unmarshal(featuresJSON, &p.Features)
 	return &p, nil
 }
+
+func (s *PlatformService) WriteAudit(ctx context.Context, actorID *uuid.UUID, action, resourceType, resourceID string, metadata map[string]interface{}, ip string) {
+	meta, _ := json.Marshal(metadata)
+	var rid *uuid.UUID
+	if resourceID != "" {
+		if id, err := uuid.Parse(resourceID); err == nil {
+			rid = &id
+		}
+	}
+	var ipVal interface{}
+	if ip != "" {
+		ipVal = ip
+	}
+	_, _ = s.db.Pool.Exec(ctx, `
+		INSERT INTO platform_audit_logs (actor_id, action, resource_type, resource_id, metadata, ip_address)
+		VALUES ($1, $2, $3, $4, $5, $6)`,
+		actorID, action, resourceType, rid, meta, ipVal)
+}
+
+func (s *PlatformService) IncrementUsage(ctx context.Context, orgSlug, metric string, delta int64) error {
+	var orgID uuid.UUID
+	if err := s.db.Pool.QueryRow(ctx, `SELECT id FROM organizations WHERE slug = $1`, orgSlug).Scan(&orgID); err != nil {
+		return err
+	}
+	now := time.Now().UTC()
+	start := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+	end := start.AddDate(0, 1, -1)
+	_, err := s.db.Pool.Exec(ctx, `
+		INSERT INTO usage_records (organization_id, metric, value, period_start, period_end)
+		VALUES ($1, $2, $3, $4, $5)
+		ON CONFLICT (organization_id, metric, period_start)
+		DO UPDATE SET value = usage_records.value + EXCLUDED.value`,
+		orgID, metric, delta, start, end)
+	return err
+}
+
+func (s *PlatformService) ListUsageRecords(ctx context.Context, limit int) ([]map[string]interface{}, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+	rows, err := s.db.Pool.Query(ctx, `
+		SELECT o.name, o.slug, u.metric, u.value, u.period_start, u.period_end
+		FROM usage_records u
+		JOIN organizations o ON o.id = u.organization_id
+		ORDER BY u.period_start DESC, o.name, u.metric
+		LIMIT $1`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []map[string]interface{}
+	for rows.Next() {
+		var name, slug, metric string
+		var value int64
+		var start, end time.Time
+		if err := rows.Scan(&name, &slug, &metric, &value, &start, &end); err != nil {
+			continue
+		}
+		out = append(out, map[string]interface{}{
+			"org_name": name, "org_slug": slug, "metric": metric,
+			"value": value, "period_start": start, "period_end": end,
+		})
+	}
+	if out == nil {
+		out = []map[string]interface{}{}
+	}
+	return out, nil
+}

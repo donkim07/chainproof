@@ -37,12 +37,12 @@ interface Analytics {
       </div>
       <div class="card">
         <h2 class="mb-4 font-semibold text-white">Blockchain status</h2>
-        <p class="text-xs text-ink-500 mb-3">Click slices to toggle · hover to highlight</p>
+        <p class="text-xs text-ink-500 mb-3">Click slices to toggle · hover for tooltips</p>
         <app-interactive-chart type="doughnut" [items]="statusDonut"></app-interactive-chart>
       </div>
       <div class="card">
         <h2 class="mb-4 font-semibold text-white">Incidents by severity</h2>
-        <p class="text-xs text-ink-500 mb-3">Click slices to toggle · hover to highlight</p>
+        <p class="text-xs text-ink-500 mb-3">Click slices to toggle · hover for tooltips</p>
         <app-interactive-chart type="pie" [items]="severityPie"></app-interactive-chart>
       </div>
       <div class="card">
@@ -54,29 +54,27 @@ interface Analytics {
 })
 export class AnalyticsPageComponent implements OnInit {
   data: Analytics | null = null;
+  recordsChart: ChartSlice[] = [];
+  statusDonut: ChartSlice[] = [];
+  severityPie: ChartSlice[] = [];
 
   constructor(private api: ApiService) {}
 
   ngOnInit() {
-    this.api.get<Analytics>('/api/v1/dashboard/analytics').subscribe(d => this.data = d);
-  }
-
-  get recordsChart(): ChartSlice[] {
-    return (this.data?.records_by_day ?? []).map(r => ({
-      label: r.date.slice(5), value: r.count, color: '#17B8A6',
-    }));
-  }
-
-  get statusDonut(): ChartSlice[] {
-    const colors: Record<string, string> = { submitted: '#17B8A6', pending: '#E8A445', failed: '#F2545B' };
-    const m = this.data?.blockchain_status ?? {};
-    return Object.entries(m).map(([k, v]) => ({ label: k, value: v, color: colors[k] ?? '#5B677A' }));
-  }
-
-  get severityPie(): ChartSlice[] {
-    const colors: Record<string, string> = { critical: '#F2545B', high: '#F5787E', medium: '#E8A445', low: '#5B677A' };
-    const m = this.data?.incidents_by_severity ?? {};
-    return Object.entries(m).map(([k, v]) => ({ label: k, value: v, color: colors[k] ?? '#5B677A' }));
+    this.api.get<Analytics>('/api/v1/dashboard/analytics').subscribe(d => {
+      this.data = d;
+      this.recordsChart = (d.records_by_day ?? []).map(r => ({
+        label: r.date.slice(5), value: r.count, color: '#17B8A6',
+      }));
+      const statusColors: Record<string, string> = { submitted: '#17B8A6', pending: '#E8A445', failed: '#F2545B' };
+      this.statusDonut = Object.entries(d.blockchain_status ?? {}).map(([k, v]) => ({
+        label: k, value: v, color: statusColors[k] ?? '#5B677A',
+      }));
+      const sevColors: Record<string, string> = { critical: '#F2545B', high: '#F5787E', medium: '#E8A445', low: '#5B677A' };
+      this.severityPie = Object.entries(d.incidents_by_severity ?? {}).map(([k, v]) => ({
+        label: k, value: v, color: sevColors[k] ?? '#5B677A',
+      }));
+    });
   }
 
   get activityChart(): BarChartItem[] {

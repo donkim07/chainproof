@@ -95,10 +95,13 @@ interface NavGroup {
           </button>
 
           @if (auth.hasOrganization()) {
-            <app-dashboard-search class="hidden md:flex" [hasOrg]="true" (navigated)="closeMobile()" />
+            <app-dashboard-search class="hidden md:flex flex-1 max-w-md" [hasOrg]="true" (navigated)="closeMobile()" />
           }
 
-          <div class="ml-auto flex items-center gap-2">
+          <div class="ml-auto flex items-center gap-2 min-w-0">
+            @if (auth.hasOrganization()) {
+              <app-dashboard-search class="flex md:hidden shrink-0 max-w-[140px] sm:max-w-[180px]" [hasOrg]="true" (navigated)="closeMobile()" />
+            }
             @if (auth.user()?.role) {
               <span class="badge-info hidden capitalize sm:inline-flex">{{ auth.user()?.role?.replace('_', ' ') }}</span>
             }
@@ -152,7 +155,7 @@ export class DashboardLayoutComponent implements OnInit {
       orgOnly: true,
       items: [
         { path: '/dashboard/api-keys', label: 'API Keys', icon: 'key', needsOrg: true, perm: 'api_keys:read' },
-        { path: '/dashboard/billing', label: 'Billing & Plans', icon: 'credit-card', needsOrg: true, perm: 'settings:read' },
+        { path: '/dashboard/billing', label: 'Billing & Plans', icon: 'credit-card', needsOrg: true, perm: 'billing:read' },
         { path: '/dashboard/team', label: 'Team & Roles', icon: 'users', needsOrg: true, perm: 'team:read' },
         { path: '/dashboard/notifications', label: 'Notifications', icon: 'bell', needsOrg: true, perm: 'settings:read' },
         { path: '/dashboard/settings', label: 'Settings', icon: 'settings', needsOrg: true, perm: 'settings:read' },

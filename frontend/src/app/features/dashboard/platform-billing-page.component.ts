@@ -33,10 +33,22 @@ import { DataTableComponent, TableColumn } from '../../shared/components/data-ta
       [countLabel]="clients.length + ' clients'"
       emptyTitle="No clients"
       emptyIcon="credit-card" />
+
+    <div class="mt-8">
+      <app-data-table
+        [columns]="usageColumns"
+        [rows]="usageRecords"
+        exportFilename="usage-records.csv"
+        [countLabel]="usageRecords.length + ' usage records'"
+        emptyTitle="No usage recorded yet"
+        emptyDescription="Anchor events will populate monthly usage meters."
+        emptyIcon="database" />
+    </div>
   `,
 })
 export class PlatformBillingPageComponent implements OnInit {
   data: { estimated_mrr?: number; active_subscriptions?: number; clients?: ClientRow[] } | null = null;
+  usageRecords: UsageRow[] = [];
 
   columns: TableColumn<ClientRow>[] = [
     { key: 'org_name', label: 'Client', class: 'text-white' },
@@ -46,8 +58,21 @@ export class PlatformBillingPageComponent implements OnInit {
     { key: 'status', label: 'Status' },
   ];
 
+  usageColumns: TableColumn<UsageRow>[] = [
+    { key: 'org_name', label: 'Client', class: 'text-white' },
+    { key: 'metric', label: 'Metric' },
+    { key: 'value', label: 'Value' },
+    { key: 'period_start', label: 'Period start', class: 'text-ink-500 text-xs',
+      format: r => new Date(r.period_start).toLocaleDateString() },
+    { key: 'period_end', label: 'Period end', class: 'text-ink-500 text-xs',
+      format: r => new Date(r.period_end).toLocaleDateString() },
+  ];
+
   constructor(private api: ApiService, private toast: ToastService) {}
-  ngOnInit() { this.api.get<typeof this.data>('/api/v1/platform/billing').subscribe(d => this.data = d); }
+  ngOnInit() {
+    this.api.get<typeof this.data>('/api/v1/platform/billing').subscribe(d => this.data = d);
+    this.api.get<UsageRow[]>('/api/v1/platform/usage-records').subscribe(r => this.usageRecords = r ?? []);
+  }
   get mrr() { return this.data?.estimated_mrr != null ? '$' + this.data.estimated_mrr : '—'; }
   get clients() { return this.data?.clients ?? []; }
   exportCsv() {
@@ -75,6 +100,15 @@ interface ClientRow {
   plan: string;
   mrr: number;
   status: string;
+}
+
+interface UsageRow {
+  org_name: string;
+  org_slug: string;
+  metric: string;
+  value: number;
+  period_start: string;
+  period_end: string;
 }
 
 function quotaLabel(plan: string) {

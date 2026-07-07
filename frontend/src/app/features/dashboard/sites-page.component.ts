@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -68,7 +68,7 @@ interface SiteAuth {
     </div>
 
     @if (showForm) {
-      <div class="card animate-slide-up mb-6">
+      <div #siteForm class="card animate-slide-up mb-6 scroll-mt-24">
         <h3 class="mb-4 font-semibold text-white">{{ editingId ? 'Edit Site' : 'Register Site' }}</h3>
         <form (ngSubmit)="saveSite()" class="grid gap-4 md:grid-cols-2">
           <div>
@@ -296,6 +296,8 @@ interface SiteAuth {
   `,
 })
 export class SitesPageComponent implements OnInit {
+  @ViewChild('siteForm') siteFormRef?: ElementRef<HTMLElement>;
+
   sites: Site[] = [];
   endpoints: Endpoint[] = [];
   discovered: Discovered[] = [];
@@ -373,6 +375,7 @@ CHAINPROOF_SITE_ID=${this.selectedSite.id}`;
     this.showForm = true;
     this.editingId = '';
     this.newSite = { name: '', base_url: '', integration_mode: 'api' };
+    this.scrollToForm();
   }
 
   cancelForm() {
@@ -400,6 +403,13 @@ CHAINPROOF_SITE_ID=${this.selectedSite.id}`;
     this.showForm = true;
     this.editingId = site.id;
     this.newSite = { name: site.name, base_url: site.base_url, integration_mode: site.integration_mode };
+    this.scrollToForm();
+  }
+
+  private scrollToForm() {
+    setTimeout(() => {
+      this.siteFormRef?.nativeElement?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 50);
   }
 
   saveSite() {

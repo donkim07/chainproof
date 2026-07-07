@@ -44,20 +44,8 @@ func (h *OrgBillingHandler) Invoices(c *gin.Context) {
 }
 
 func (h *OrgBillingHandler) ChangePlan(c *gin.Context) {
-	slug, ok := requireOrgSlug(c, h.platform)
-	if !ok {
-		return
-	}
-	var body struct {
-		PlanSlug string `json:"plan_slug" binding:"required"`
-	}
-	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	if err := h.billing.RequestPlanChange(c.Request.Context(), slug, body.PlanSlug); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "plan_slug": body.PlanSlug})
+	c.JSON(http.StatusForbidden, gin.H{
+		"error":   "plan_changes_disabled",
+		"message": "Plan changes are managed by ChainProof support. Contact us or upgrade via your account manager.",
+	})
 }

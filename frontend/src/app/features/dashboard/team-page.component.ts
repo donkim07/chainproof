@@ -39,7 +39,7 @@ interface Permission {
   template: `
     <app-page-header title="Team &amp; Roles" subtitle="Manage members and view role permissions (RBAC)." badge="Organization">
       <ng-container actions *appCan="'team:write'">
-        <app-button (click)="openCreate = true">+ Add User</app-button>
+        <app-button (click)="openCreateModal()">+ Add User</app-button>
       </ng-container>
     </app-page-header>
 
@@ -104,7 +104,7 @@ interface Permission {
                 <button class="text-xs text-ink-500 hover:text-white" (click)="cancelEditPerms()">Cancel</button>
                 <app-button (click)="saveRolePerms()" [loading]="savingPerms">Save</app-button>
               </div>
-            } @else if (selectedRole !== 'admin') {
+            } @else {
               <button class="text-xs text-signal-400 hover:underline" (click)="startEditPerms()">Edit</button>
             }
           </ng-container>
@@ -205,6 +205,11 @@ export class TeamPageComponent implements OnInit {
   paged() {
     const start = (this.page - 1) * this.pageSize;
     return this.filtered.slice(start, start + this.pageSize);
+  }
+
+  openCreateModal() {
+    this.openCreate = true;
+    setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 0);
   }
 
   reload() {
