@@ -75,10 +75,8 @@ export class AuthService {
           if (this.router.url.startsWith('/dashboard')) {
             this.router.navigate(['/login']);
           }
-        } else {
-          // Transient failure — keep token and any cached user; don't force logout.
-          this._sessionChecked.set(true);
         }
+        this._sessionChecked.set(true);
       },
     });
   }

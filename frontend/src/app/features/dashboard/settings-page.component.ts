@@ -57,7 +57,7 @@ interface NotificationChannel {
     <div class="table-shell mt-6">
       <div class="table-toolbar">
         <span class="text-sm font-medium text-white">Notification channels</span>
-        <span class="text-xs text-ink-500">{{ channels?.length ?? 0 }} configured</span>
+        <span class="text-xs text-ink-500">{{ channels.length }} configured</span>
       </div>
       <div class="overflow-x-auto">
         <table class="cp-table">
@@ -70,7 +70,7 @@ interface NotificationChannel {
             </tr>
           </thead>
           <tbody>
-            @for (item of channels ?? []; track item.id) {
+            @for (item of channels; track item.id) {
               <tr class="border-t border-ink-800 hover:bg-ink-800/30">
                 <td class="text-white">{{ item.name }}</td>
                 <td class="text-ink-500">{{ item.channel_type }}</td>
