@@ -57,7 +57,7 @@ interface NotificationChannel {
     <div class="table-shell mt-6">
       <div class="table-toolbar">
         <span class="text-sm font-medium text-white">Notification channels</span>
-        <span class="text-xs text-ink-500">{{ channels.length }} configured</span>
+        <span class="text-xs text-ink-500">{{ channels?.length ?? 0 }} configured</span>
       </div>
       <div class="overflow-x-auto">
         <table class="cp-table">
@@ -70,7 +70,7 @@ interface NotificationChannel {
             </tr>
           </thead>
           <tbody>
-            @for (item of channels; track item.id) {
+            @for (item of channels ?? []; track item.id) {
               <tr class="border-t border-ink-800 hover:bg-ink-800/30">
                 <td class="text-white">{{ item.name }}</td>
                 <td class="text-ink-500">{{ item.channel_type }}</td>
@@ -101,7 +101,7 @@ export class SettingsPageComponent implements OnInit {
 
   reload() {
     this.api.get<NotificationChannel[]>('/api/v1/notifications/channels').subscribe({
-      next: x => (this.channels = x),
+      next: x => (this.channels = Array.isArray(x) ? x : []),
       error: () => (this.channels = []),
     });
   }
@@ -143,7 +143,7 @@ export class SettingsPageComponent implements OnInit {
       error: e => {
         const msg = e.error?.error || 'Failed to send verification email';
         if (msg.includes('already verified') || msg.includes('email_verified') || msg.includes('email already verified')) {
-          this.auth.refreshMe();
+          this.auth.markEmailVerified();
           this.toast.success('Your email is already verified');
         } else {
           this.toast.error(msg);

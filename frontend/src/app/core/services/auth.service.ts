@@ -31,6 +31,7 @@ export class AuthService {
 
   constructor(private api: ApiService, private router: Router, private perms: PermissionService) {
     if (localStorage.getItem('cp_token')) {
+      this.isLoggedIn.set(true);
       this.refreshMe();
     } else {
       this._sessionChecked.set(true);
@@ -50,17 +51,33 @@ export class AuthService {
     if (u.org_slug) localStorage.setItem('cp_org_slug', u.org_slug);
   }
 
+  /** Update the in-memory user without a round-trip (e.g. after email verify). */
+  patchUser(patch: Partial<AuthUser>) {
+    const current = this.user();
+    if (!current) return;
+    this.applyUser({ ...current, ...patch });
+  }
+
+  markEmailVerified() {
+    this.patchUser({ email_verified: true });
+    sessionStorage.removeItem('cp_verify_nudge');
+  }
+
   refreshMe() {
     this.api.get<AuthUser>('/api/v1/auth/me').subscribe({
       next: u => {
         this.applyUser(u);
         this._sessionChecked.set(true);
       },
-      error: () => {
-        this.clearSession(false);
-        this._sessionChecked.set(true);
-        if (this.router.url.startsWith('/dashboard')) {
-          this.router.navigate(['/login']);
+      error: err => {
+        if (err.status === 401) {
+          this.clearSession(false);
+          if (this.router.url.startsWith('/dashboard')) {
+            this.router.navigate(['/login']);
+          }
+        } else {
+          // Transient failure — keep token and any cached user; don't force logout.
+          this._sessionChecked.set(true);
         }
       },
     });
@@ -86,15 +103,11 @@ export class AuthService {
       localStorage.removeItem('cp_org_slug');
     }
     this.applyUser(res.user);
+    this._sessionChecked.set(true);
+    // Refresh profile in background; never wipe a fresh login on /me failure.
     this.api.get<AuthUser>('/api/v1/auth/me').subscribe({
-      next: u => {
-        this.applyUser(u);
-        this._sessionChecked.set(true);
-      },
-      error: () => {
-        this.clearSession(false);
-        this._sessionChecked.set(true);
-      },
+      next: u => this.applyUser(u),
+      error: () => {},
     });
   }
 

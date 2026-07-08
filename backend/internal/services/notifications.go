@@ -48,6 +48,9 @@ func (s *NotificationService) ListChannels(ctx context.Context, orgSlug string) 
 		_ = json.Unmarshal(configJSON, &n.Config)
 		out = append(out, n)
 	}
+	if out == nil {
+		out = []models.NotificationChannel{}
+	}
 	return out, nil
 }
 

@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ApiService } from '../../core/services/api.service';
 import { ToastService } from '../../core/services/toast.service';
@@ -20,14 +20,14 @@ import { PublicNavComponent } from '../../shared/components/public-nav/public-na
         } @else if (success) {
           <div class="text-signal-400 text-4xl mb-4">✓</div>
           <h1 class="text-xl font-bold text-white mb-2">Email verified</h1>
-          <a [routerLink]="auth.isLoggedIn() ? '/dashboard' : '/login'">
+          <a [routerLink]="auth.isLoggedIn() ? '/dashboard/settings' : '/login'">
             <app-button [fullWidth]="true">{{ auth.isLoggedIn() ? 'Go to dashboard' : 'Sign in' }}</app-button>
           </a>
         } @else {
           <h1 class="text-xl font-bold text-white mb-2">Verification failed</h1>
           <p class="text-sm text-ink-500 mb-4">{{ error }}</p>
           @if (auth.isLoggedIn()) {
-            <a routerLink="/dashboard" class="text-signal-400 hover:underline text-sm">Back to dashboard</a>
+            <a routerLink="/dashboard/settings" class="text-signal-400 hover:underline text-sm">Back to settings</a>
           } @else {
             <a routerLink="/login" class="text-signal-400 hover:underline text-sm">Sign in</a>
           }
@@ -55,7 +55,7 @@ export class VerifyEmailPageComponent implements OnInit {
         this.success = true;
         this.toast.success('Email verified successfully');
         if (this.auth.isLoggedIn()) {
-          this.auth.refreshMe();
+          this.auth.markEmailVerified();
         }
       },
       error: e => {
