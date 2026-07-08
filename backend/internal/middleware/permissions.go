@@ -16,11 +16,7 @@ func RequireTenantPermission(perms *services.PermissionService, permission strin
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 			return
 		}
-		if claims.Role == "super_admin" {
-			c.Next()
-			return
-		}
-		if claims.Role == "owner" && permission != "billing:read" && permission != "billing:write" {
+		if claims.Role == "super_admin" || claims.Role == "owner" {
 			c.Next()
 			return
 		}
@@ -28,7 +24,7 @@ func RequireTenantPermission(perms *services.PermissionService, permission strin
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "organization context required"})
 			return
 		}
-		ok, err := perms.HasPermission(c.Request.Context(), claims.OrgSlug, claims.Email, permission)
+		ok, err := perms.HasPermission(c.Request.Context(), claims.OrgSlug, claims.Email, permission, claims.Role)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "permission check failed"})
 			return

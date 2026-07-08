@@ -38,10 +38,6 @@ interface CheckoutResponse {
             @if (amount != null && amount > 0) { · &#36;{{ amount }}/mo }
           </p>
         }
-        <p class="text-xs text-ink-500 border border-ink-700 rounded-lg p-3 bg-ink-900/50 mb-6 text-left">
-          Stripe is not configured on this server yet. Your plan has <strong class="text-white">not</strong> been changed.
-          Once <code class="text-signal-400">STRIPE_SECRET_KEY</code> is added to the backend environment, this page will redirect to Stripe Checkout.
-        </p>
         <div class="flex flex-wrap justify-center gap-3">
           <a routerLink="/dashboard/billing"><app-button variant="secondary">Back to billing</app-button></a>
           <a routerLink="/dashboard/billing"><app-button>Try again</app-button></a>

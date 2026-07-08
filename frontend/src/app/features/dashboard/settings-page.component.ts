@@ -136,8 +136,20 @@ export class SettingsPageComponent implements OnInit {
   resendVerification() {
     this.resending = true;
     this.api.post('/api/v1/auth/resend-verification', {}).subscribe({
-      next: () => { this.toast.success('Verification email sent'); this.resending = false; },
-      error: e => { this.toast.error(e.error?.error || 'Failed'); this.resending = false; },
+      next: () => {
+        this.toast.success('Verification email sent — check your inbox');
+        this.resending = false;
+      },
+      error: e => {
+        const msg = e.error?.error || 'Failed to send verification email';
+        if (msg.includes('already verified') || msg.includes('email_verified') || msg.includes('email already verified')) {
+          this.auth.refreshMe();
+          this.toast.success('Your email is already verified');
+        } else {
+          this.toast.error(msg);
+        }
+        this.resending = false;
+      },
     });
   }
 }

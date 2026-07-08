@@ -127,13 +127,13 @@ func (s *AuthService) Login(ctx context.Context, req models.LoginRequest) (*mode
 	err := s.db.Pool.QueryRow(ctx, `
 		SELECT u.id, u.email, u.password_hash, u.full_name, u.role, u.organization_id,
 		       COALESCE(o.name, ''), COALESCE(o.slug, ''), COALESCE(o.plan_id, '00000000-0000-0000-0000-000000000000'),
-		       COALESCE(p.slug, ''), COALESCE(o.subscription_status, '')
+		       COALESCE(p.slug, ''), COALESCE(o.subscription_status, ''), u.email_verified
 		FROM platform_users u
 		LEFT JOIN organizations o ON o.id = u.organization_id
 		LEFT JOIN plans p ON p.id = o.plan_id
 		WHERE u.email = $1 AND u.active = true`,
 		req.Email).Scan(&user.ID, &user.Email, &hash, &user.FullName, &user.Role,
-		&orgID, &orgName, &orgSlug, &planID, &planSlug, &subStatus)
+		&orgID, &orgName, &orgSlug, &planID, &planSlug, &subStatus, &user.EmailVerified)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errors.New("invalid credentials")

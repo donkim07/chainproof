@@ -66,7 +66,7 @@ func (h *AuthHandler) Me(c *gin.Context) {
 		"email_verified": user.EmailVerified,
 	}
 	if claims.OrgSlug != "" && h.perms != nil {
-		if perms, err := h.perms.UserPermissions(c.Request.Context(), claims.OrgSlug, claims.Email); err == nil {
+		if perms, err := h.perms.UserPermissions(c.Request.Context(), claims.OrgSlug, claims.Email, claims.Role); err == nil {
 			resp["permissions"] = perms
 		}
 	}

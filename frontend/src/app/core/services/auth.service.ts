@@ -40,8 +40,10 @@ export class AuthService {
   private applyUser(u: AuthUser) {
     this.user.set(u);
     this.isLoggedIn.set(true);
-    if (u.role === 'super_admin' || u.role === 'owner') {
+    if (u.role === 'super_admin') {
       this.perms.setPermissions(['*']);
+    } else if (u.role === 'owner') {
+      this.perms.setPermissions(u.permissions?.length ? u.permissions : ['*']);
     } else {
       this.perms.setPermissions(u.permissions ?? []);
     }
@@ -83,8 +85,17 @@ export class AuthService {
     } else {
       localStorage.removeItem('cp_org_slug');
     }
-    this._sessionChecked.set(true);
     this.applyUser(res.user);
+    this.api.get<AuthUser>('/api/v1/auth/me').subscribe({
+      next: u => {
+        this.applyUser(u);
+        this._sessionChecked.set(true);
+      },
+      error: () => {
+        this.clearSession(false);
+        this._sessionChecked.set(true);
+      },
+    });
   }
 
   hasOrganization(): boolean {

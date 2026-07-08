@@ -21,6 +21,13 @@ func (s *AuthService) token() (string, error) {
 }
 
 func (s *AuthService) SendVerificationEmail(ctx context.Context, userID string) error {
+	var alreadyVerified bool
+	if err := s.db.Pool.QueryRow(ctx, `SELECT email_verified FROM platform_users WHERE id = $1`, userID).Scan(&alreadyVerified); err != nil {
+		return err
+	}
+	if alreadyVerified {
+		return errors.New("email already verified")
+	}
 	tok, err := s.token()
 	if err != nil {
 		return err

@@ -42,6 +42,12 @@ export class ApiService {
     return this.http.get<T>(`${this.base}${path}`);
   }
 
+  postPublic<T>(path: string, body: unknown): Observable<T> {
+    return this.http.post<T>(`${this.base}${path}`, body, {
+      headers: new HttpHeaders({ 'Content-Type': 'application/json' }),
+    });
+  }
+
   downloadText(path: string, filename: string): void {
     this.http.get(`${this.base}${path}`, {
       headers: this.headers(),

@@ -293,7 +293,9 @@ export class DashboardLayoutComponent implements OnInit {
   private checkEmailVerification() {
     const u = this.auth.user();
     if (!u || u.email_verified !== false) return;
-    this.toast.error('Please verify your email within 4 days. Check your inbox or resend from Settings.');
+    if (sessionStorage.getItem('cp_verify_nudge') === '1') return;
+    sessionStorage.setItem('cp_verify_nudge', '1');
+    this.toast.warning('Please verify your email within 4 days. Check your inbox or resend from Settings.');
   }
 
   closeMobile() { this.sidebarOpen.set(false); }
