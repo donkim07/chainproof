@@ -1,5 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { ApiService } from './api.service';
 import { PermissionService } from './permission.service';
@@ -29,13 +30,23 @@ export class AuthService {
   private _sessionChecked = signal(false);
   readonly sessionChecked = this._sessionChecked.asReadonly();
 
-  constructor(private api: ApiService, private router: Router, private perms: PermissionService) {
-    if (localStorage.getItem('cp_token')) {
-      this.isLoggedIn.set(true);
-      this.refreshMe();
-    } else {
+  constructor(private api: ApiService, private router: Router, private perms: PermissionService) {}
+
+  /** Called via APP_INITIALIZER before routing — restores session from stored JWT. */
+  bootstrapSession(): Promise<void> {
+    const token = localStorage.getItem('cp_token');
+    if (!token) {
       this._sessionChecked.set(true);
+      return Promise.resolve();
     }
+    return firstValueFrom(this.api.get<AuthUser>('/api/v1/auth/me'))
+      .then(u => this.applyUser(u))
+      .catch(err => {
+        if (err?.status === 401) {
+          this.clearSession(false);
+        }
+      })
+      .finally(() => this._sessionChecked.set(true));
   }
 
   private applyUser(u: AuthUser) {
@@ -51,7 +62,6 @@ export class AuthService {
     if (u.org_slug) localStorage.setItem('cp_org_slug', u.org_slug);
   }
 
-  /** Update the in-memory user without a round-trip (e.g. after email verify). */
   patchUser(patch: Partial<AuthUser>) {
     const current = this.user();
     if (!current) return;
@@ -64,32 +74,25 @@ export class AuthService {
   }
 
   refreshMe() {
-    this.api.get<AuthUser>('/api/v1/auth/me').subscribe({
-      next: u => {
-        this.applyUser(u);
-        this._sessionChecked.set(true);
-      },
-      error: err => {
-        if (err.status === 401) {
-          this.clearSession(false);
-          if (this.router.url.startsWith('/dashboard')) {
-            this.router.navigate(['/login']);
-          }
+    return firstValueFrom(this.api.get<AuthUser>('/api/v1/auth/me'))
+      .then(u => this.applyUser(u))
+      .catch(err => {
+        if (err?.status === 401) {
+          this.clearSession(true);
         }
-        this._sessionChecked.set(true);
-      },
-    });
+        throw err;
+      });
   }
 
   login(email: string, password: string) {
     return this.api.post<AuthResponse>('/api/v1/auth/login', { email, password }).pipe(
-      tap(res => this.setSession(res))
+      tap(res => this.setSession(res)),
     );
   }
 
   register(data: { email: string; password: string; full_name: string; org_name: string }) {
     return this.api.post<AuthResponse>('/api/v1/auth/register', data).pipe(
-      tap(res => this.setSession(res))
+      tap(res => this.setSession(res)),
     );
   }
 
@@ -102,7 +105,7 @@ export class AuthService {
     }
     this.applyUser(res.user);
     this._sessionChecked.set(true);
-    // Refresh profile in background; never wipe a fresh login on /me failure.
+    // Hydrate permissions/email_verified without blocking navigation.
     this.api.get<AuthUser>('/api/v1/auth/me').subscribe({
       next: u => this.applyUser(u),
       error: () => {},
@@ -140,4 +143,8 @@ export class AuthService {
       this.router.navigate(['/login']);
     }
   }
+}
+
+export function initAuth(auth: AuthService) {
+  return () => auth.bootstrapSession();
 }

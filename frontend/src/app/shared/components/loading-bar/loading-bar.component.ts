@@ -30,7 +30,7 @@ import { LoadingBarService } from '../../../core/services/loading-bar.service';
       height: 100%;
       background: linear-gradient(90deg, #17B8A6, #3DD9C6);
       box-shadow: 0 0 12px rgba(61, 217, 198, 0.55);
-      transition: width 0.25s ease-out;
+      transition: width 0.2s ease-out;
     }
   `],
 })
@@ -47,8 +47,11 @@ export class LoadingBarComponent {
         || e instanceof NavigationError,
       ),
     ).subscribe(e => {
-      if (e instanceof NavigationStart) this.loading.start();
-      else this.loading.complete();
+      if (e instanceof NavigationStart) {
+        this.loading.start();
+      } else {
+        this.loading.complete();
+      }
     });
   }
 }

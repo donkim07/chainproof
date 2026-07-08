@@ -3,7 +3,7 @@ import { inject } from '@angular/core';
 import { catchError, throwError } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 
-const PUBLIC_AUTH_PATHS = [
+const SKIP_LOGOUT_PATHS = [
   '/auth/login',
   '/auth/register',
   '/auth/verify-email',
@@ -14,11 +14,10 @@ const PUBLIC_AUTH_PATHS = [
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
-  const isPublicAuth = PUBLIC_AUTH_PATHS.some(p => req.url.includes(p));
+  const skipLogout = SKIP_LOGOUT_PATHS.some(p => req.url.includes(p));
   return next(req).pipe(
     catchError(err => {
-      // Let AuthService.refreshMe() handle /auth/me 401; avoid double logout.
-      if (err.status === 401 && !isPublicAuth) {
+      if (err.status === 401 && !skipLogout) {
         auth.handleUnauthorized();
       }
       return throwError(() => err);
