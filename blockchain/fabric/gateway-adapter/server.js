@@ -17,7 +17,7 @@ function readPrivateKeySigner() {
   return signers.newPrivateKeySigner(crypto.createPrivateKey(privateKeyPem));
 }
 
-function loadGateway() {
+function buildGateway() {
   const tlsRootCert = fs.readFileSync(process.env.FABRIC_TLS_CERT_PATH);
   const credentials = grpc.credentials.createSsl(tlsRootCert);
   const client = new grpc.Client(process.env.FABRIC_PEER_ENDPOINT, credentials, {
@@ -34,7 +34,49 @@ function loadGateway() {
 
   const network = gateway.getNetwork(process.env.FABRIC_CHANNEL || 'chainproof-channel');
   const contract = network.getContract(process.env.FABRIC_CHAINCODE || 'chainproof-integrity');
-  return { gateway, contract };
+  return { client, gateway, contract };
+}
+
+// Built once and reused for the life of the process instead of per-request — see
+// eardhi-backend's gateway-adapter fix for why (per-request TLS/gRPC setup caused the
+// CPU/memory exhaustion that got a sibling container OOM-killed on the shared host).
+let gatewayConnPromise = null;
+
+function getConnection() {
+  if (!gatewayConnPromise) {
+    gatewayConnPromise = Promise.resolve()
+      .then(buildGateway)
+      .catch((err) => {
+        gatewayConnPromise = null;
+        throw err;
+      });
+  }
+  return gatewayConnPromise;
+}
+
+function isTransportError(err) {
+  const code = err && err.code;
+  return code === grpc.status.UNAVAILABLE
+    || code === grpc.status.CANCELLED
+    || code === grpc.status.DEADLINE_EXCEEDED;
+}
+
+async function withContract(fn) {
+  const conn = await getConnection();
+  try {
+    return await fn(conn.contract);
+  } catch (err) {
+    if (isTransportError(err)) {
+      gatewayConnPromise = null;
+      try {
+        conn.gateway.close();
+        conn.client.close();
+      } catch (_closeErr) {
+        // connection already broken; nothing to clean up
+      }
+    }
+    throw err;
+  }
 }
 
 function checkApiKey(req, res) {
@@ -51,40 +93,47 @@ app.get('/health', (_req, res) => {
 
 app.post('/api/v1/anchors/integrity', async (req, res) => {
   if (!checkApiKey(req, res)) return;
-  let gateway;
   try {
-    const { gateway: gw, contract } = loadGateway();
-    gateway = gw;
-    const resultBytes = await contract.submitTransaction('anchorIntegrity', JSON.stringify(req.body || {}));
+    const resultBytes = await withContract((contract) =>
+      contract.submitTransaction('anchorIntegrity', JSON.stringify(req.body || {})));
     let result = { success: true };
     if (resultBytes?.length) result = JSON.parse(Buffer.from(resultBytes).toString());
     res.json({ success: true, txId: result.txId || null });
   } catch (error) {
     res.status(500).json({ success: false, txId: null, error: error.message });
-  } finally {
-    gateway?.close();
   }
 });
 
 app.get('/api/v1/anchors/integrity/verify', async (req, res) => {
   if (!checkApiKey(req, res)) return;
-  let gateway;
   try {
-    const { gateway: gw, contract } = loadGateway();
-    gateway = gw;
     const { tenantId, entityType, entityUid, recordHash } = req.query;
-    const resultBytes = await contract.evaluateTransaction(
-      'queryIntegrity', tenantId || 'global', entityType, entityUid, recordHash
-    );
+    const resultBytes = await withContract((contract) =>
+      contract.evaluateTransaction('queryIntegrity', tenantId || 'global', entityType, entityUid, recordHash));
     const data = resultBytes?.length ? Buffer.from(resultBytes).toString() : '';
     if (!data) return res.json({ found: false, txId: null });
     const anchor = JSON.parse(data);
     res.json({ found: true, txId: anchor.txId || null, anchor });
   } catch (error) {
     res.status(500).json({ found: false, error: error.message });
-  } finally {
-    gateway?.close();
   }
 });
 
-app.listen(PORT, () => console.log(`ChainProof gateway on :${PORT}`));
+const server = app.listen(PORT, () => console.log(`ChainProof gateway on :${PORT}`));
+
+async function shutdown() {
+  server.close();
+  if (gatewayConnPromise) {
+    try {
+      const conn = await gatewayConnPromise;
+      conn.gateway.close();
+      conn.client.close();
+    } catch (_err) {
+      // never connected or already broken; nothing to close
+    }
+  }
+  process.exit(0);
+}
+
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
