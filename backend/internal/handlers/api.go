@@ -43,7 +43,7 @@ func (h *IntegrityHandler) Anchor(c *gin.Context) {
 			return
 		}
 	}
-	rec, err := h.integrity.Anchor(c.Request.Context(), slug, middleware.GetActorID(c), req)
+	rec, err := h.integrity.Anchor(c.Request.Context(), slug, middleware.GetActorID(c), req, h.sites, h.secret)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

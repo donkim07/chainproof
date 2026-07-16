@@ -160,7 +160,7 @@ func (s *SiteService) anchorPayload(ctx context.Context, orgSlug string, siteID 
 		EntityType: entityType,
 		EntityID:   entityID,
 		Payload:    payload,
-	})
+	}, nil, "")
 	return entityID, err
 }
 

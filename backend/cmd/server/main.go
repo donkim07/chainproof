@@ -221,7 +221,7 @@ func main() {
 }
 
 func runMonitor(integrity *services.IntegrityService, sites *services.SiteService, resolver *tenant.Resolver, platform *database.PlatformDB, secret string) {
-	ticker := time.NewTicker(5 * time.Minute)
+	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 	for range ticker.C {
 		ctx := context.Background()

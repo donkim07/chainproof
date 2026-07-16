@@ -35,14 +35,14 @@ func (s *IntegrityService) NetworkStatus(ctx context.Context) models.NetworkStat
 		Channel:      s.fabricChannel,
 		Chaincode:    s.fabricChaincode,
 		OrdererNodes: []string{"orderer0.chainproof.local"},
-		PeerNodes:    []string{"peer0.chainproof.local"},
+		PeerNodes:    []string{"peer0.chainproof.local", "peer1.chainproof.local", "peer2.chainproof.local"},
 		CheckedAt:    time.Now(),
 	}
 	status.GatewayReachable = s.fabric.Health(ctx) == nil
 	return status
 }
 
-func (s *IntegrityService) Anchor(ctx context.Context, orgSlug, actorID string, req models.AnchorRequest) (*models.IntegrityRecord, error) {
+func (s *IntegrityService) Anchor(ctx context.Context, orgSlug, actorID string, req models.AnchorRequest, sites *SiteService, secret string) (*models.IntegrityRecord, error) {
 	pool, _, err := s.tenant.GetPool(ctx, orgSlug)
 	if err != nil {
 		return nil, err
@@ -136,7 +136,48 @@ func (s *IntegrityService) Anchor(ctx context.Context, orgSlug, actorID string, 
 		return nil, err
 	}
 
+	// Don't make the caller wait on an outbound HTTP round-trip to their own
+	// site — verify in the background so tampering (or confirmation of
+	// integrity) surfaces within seconds instead of waiting for the next
+	// monitor tick.
+	if anchorErr == nil && req.Verify != nil && siteID != nil && sites != nil {
+		verifyReq := req
+		siteIDCopy := *siteID
+		go s.verifyImmediately(orgSlug, secret, sites, siteIDCopy, verifyReq)
+	}
+
 	return &rec, nil
+}
+
+// verifyImmediately re-fetches the site's live data right after an anchor with
+// a Verify config, so the first check doesn't wait for the periodic monitor.
+func (s *IntegrityService) verifyImmediately(orgSlug, secret string, sites *SiteService, siteID uuid.UUID, req models.AnchorRequest) {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	pool, _, err := s.tenant.GetPool(ctx, orgSlug)
+	if err != nil {
+		return
+	}
+	var baseURL string
+	var settingsJSON []byte
+	if err := pool.QueryRow(ctx, `SELECT base_url, settings FROM sites WHERE id = $1`, siteID).
+		Scan(&baseURL, &settingsJSON); err != nil {
+		return
+	}
+	var settings map[string]interface{}
+	_ = json.Unmarshal(settingsJSON, &settings)
+
+	job := anchoredVerifyJob{
+		EntityType: req.EntityType, EntityID: req.EntityID, SiteID: siteID,
+		BaseURL: baseURL, Settings: settings, Auth: parseAuthFromSettings(settings, secret),
+		Verify: *req.Verify, AnchorPayload: req.Payload,
+	}
+	if job.Verify.Method == "" {
+		job.Verify.Method = "GET"
+	}
+	s.runAnchoredVerify(ctx, orgSlug, sites, secret, job)
+	_ = touchLastVerified(ctx, pool, req.EntityType, req.EntityID)
 }
 
 func (s *IntegrityService) Verify(ctx context.Context, orgSlug string, req models.VerifyRequest) (*models.VerifyResponse, error) {
