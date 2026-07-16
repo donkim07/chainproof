@@ -189,25 +189,19 @@ export class LiveNetworkVisualizerComponent implements AfterViewInit, OnDestroy 
     });
   }
 
-  /** Which peer this event's packet visits — cycles so all peers see traffic over time. */
-  private peerCursor = 0;
-  private pickPeerPathIds(): { fan: string; toLedger: boolean } {
-    const idx = this.peerCursor % Math.max(1, this.peers.length);
-    this.peerCursor++;
-    const fanPathByIndex = ['lnv-path-4', 'lnv-path-5', 'lnv-path-6'];
-    return { fan: fanPathByIndex[idx] ?? 'lnv-path-5', toLedger: idx === 1 || this.peers.length === 1 };
-  }
-
   private playFlow(isTamper: boolean, onDone: () => void) {
     const svg = this.svgRef.nativeElement;
     const color = isTamper ? '#F2545B' : '#3DD9C6';
     const lineColor = isTamper ? '#F2545B' : 'url(#lnvLineGrad)';
-    const { fan, toLedger } = this.pickPeerPathIds();
-    const mainSequence = ['lnv-path-1', 'lnv-path-2', 'lnv-path-3', fan];
-    const fullSequence = toLedger ? [...mainSequence, 'lnv-path-7'] : mainSequence;
+    // Real Fabric semantics: the orderer broadcasts the block to every peer at
+    // once, and every peer commits it to the ledger — so every event lights
+    // up the full path through ALL peers and always reaches the ledger.
+    const fanPaths = ['lnv-path-4', 'lnv-path-5', 'lnv-path-6'].slice(0, Math.max(1, this.peers.length));
+    const fullSequence = ['lnv-path-1', 'lnv-path-2', 'lnv-path-3', ...fanPaths, 'lnv-path-7'];
 
     // The previous event's lit path disappears the moment a new one starts —
-    // reset everything to idle before drawing the fresh (persisted) route.
+    // snap everything back to idle (no tween, so it can't fight the forward
+    // draw that starts on the very same shared paths a moment later).
     this.resetAllPaths();
 
     const tl = gsap.timeline({ onComplete: onDone });
@@ -221,14 +215,13 @@ export class LiveNetworkVisualizerComponent implements AfterViewInit, OnDestroy 
         duration: 0.4, ease: 'none',
         motionPath: { path, align: path, alignOrigin: [0.5, 0.5] },
       }, '<');
-      if (id === fan) {
-        const peer = this.peers[(this.peerCursor - 1) % this.peers.length];
+      const fanIdx = fanPaths.indexOf(id);
+      if (fanIdx >= 0) {
+        const peer = this.peers[fanIdx];
         tl.call(() => this.pulseNode(`#lnv-node-${peer?.id}`, isTamper));
       }
     });
-    if (toLedger) {
-      tl.call(() => this.pulseNode('#lnv-node-ledger', isTamper));
-    }
+    tl.call(() => this.pulseNode('#lnv-node-ledger', isTamper));
     tl.to('#lnv-packet', { opacity: 0, duration: 0.2 });
     // Lines stay lit (persisted) — no fade-back here by design.
   }
@@ -239,9 +232,9 @@ export class LiveNetworkVisualizerComponent implements AfterViewInit, OnDestroy 
       const el = svg.querySelector(`#${id}`) as SVGPathElement;
       if (!el) return;
       const len = el.getTotalLength();
-      gsap.to(el, { strokeDashoffset: len, attr: { stroke: 'url(#lnvLineDim)' }, duration: 0.2, overwrite: true });
+      gsap.set(el, { strokeDashoffset: len, attr: { stroke: 'url(#lnvLineDim)' } });
     });
-    gsap.to('.lnv-node-body', { stroke: '#262E3A', strokeWidth: 1.5, duration: 0.2, overwrite: 'auto' });
+    gsap.set('.lnv-node-body', { stroke: '#262E3A', strokeWidth: 1.5 });
   }
 
   private pulseNode(nodeSel: string, isTamper: boolean) {
