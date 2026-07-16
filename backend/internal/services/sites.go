@@ -23,16 +23,21 @@ import (
 )
 
 type SiteService struct {
-	tenant  *tenant.Resolver
-	client  *http.Client
-	scanner *ScannerService
+	tenant            *tenant.Resolver
+	client            *http.Client
+	scanner           *ScannerService
+	allowLocalTargets bool
 }
 
-func NewSiteService(t *tenant.Resolver) *SiteService {
+// NewSiteService builds the site service. allowLocalTargets should only be
+// true outside production (see isSafeExternalURL) so that localhost/private
+// URLs can be registered and scanned during local development.
+func NewSiteService(t *tenant.Resolver, allowLocalTargets bool) *SiteService {
 	return &SiteService{
-		tenant:  t,
-		client:  &http.Client{Timeout: 10 * time.Second},
-		scanner: NewScannerService(),
+		tenant:            t,
+		client:            &http.Client{Timeout: 10 * time.Second},
+		scanner:           NewScannerService(),
+		allowLocalTargets: allowLocalTargets,
 	}
 }
 
@@ -48,7 +53,7 @@ func (s *SiteService) Create(ctx context.Context, orgSlug string, site models.Si
 	if site.IntegrationMode == "" {
 		site.IntegrationMode = "api"
 	}
-	if !isSafeExternalURL(site.BaseURL) {
+	if !isSafeExternalURL(site.BaseURL, s.allowLocalTargets) {
 		return nil, errors.New("base_url must be a valid public http(s) URL")
 	}
 
@@ -250,7 +255,7 @@ func (s *SiteService) Update(ctx context.Context, orgSlug string, siteID uuid.UU
 	if mode == "" {
 		mode = "proxy"
 	}
-	if !isSafeExternalURL(req.BaseURL) {
+	if !isSafeExternalURL(req.BaseURL, s.allowLocalTargets) {
 		return nil, errors.New("base_url must be a valid public http(s) URL")
 	}
 	_, err = pool.Exec(ctx, `

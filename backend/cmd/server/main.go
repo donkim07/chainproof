@@ -56,7 +56,7 @@ func main() {
 
 	fabricClient := blockchain.NewClient(cfg.FabricGatewayURL, cfg.FabricGatewayKey, cfg.FabricDevMock)
 	integritySvc := services.NewIntegrityService(tenantResolver, fabricClient, cfg.FabricChannel, cfg.FabricChaincode)
-	siteSvc := services.NewSiteService(tenantResolver)
+	siteSvc := services.NewSiteService(tenantResolver, cfg.Env != "production")
 	apiKeySvc := services.NewAPIKeyService(tenantResolver)
 	teamSvc := services.NewTeamService(tenantResolver)
 	notificationSvc := services.NewNotificationService(tenantResolver)
