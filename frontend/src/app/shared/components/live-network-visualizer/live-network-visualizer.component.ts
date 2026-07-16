@@ -12,17 +12,21 @@ export interface NetworkLogLine {
   tampered: boolean;
 }
 
+const PEER_Y = [130, 210, 290];
+const ALL_PATH_IDS = ['lnv-path-1', 'lnv-path-2', 'lnv-path-3', 'lnv-path-4', 'lnv-path-5', 'lnv-path-6', 'lnv-path-7'];
+
 /**
  * Real (not simulated) Hyperledger Fabric topology behind ChainProof's shared
- * ledger: one orderer, one CouchDB-backed peer. Driven by actual polled
- * integrity_records / tamper_incidents — see NetworkPageComponent.
+ * ledger, driven by actual polled integrity_records / tamper_incidents — see
+ * NetworkPageComponent. Each traversed path stays lit (green, or red for a
+ * tamper) until the next event arrives and redraws the diagram fresh.
  */
 @Component({
   selector: 'app-live-network-visualizer',
   standalone: true,
   imports: [CommonModule],
   template: `
-    <div class="relative w-full h-[min(88vw,420px)] sm:h-[440px] bg-ink-950 overflow-hidden rounded-2xl border border-ink-700 shadow-2xl shadow-black/40">
+    <div class="relative w-full h-[min(88vw,440px)] sm:h-[460px] bg-ink-950 overflow-hidden rounded-2xl border border-ink-700 shadow-2xl shadow-black/40">
       <div class="absolute inset-0 opacity-[0.07]"
         style="background-image: linear-gradient(#17B8A6 1px, transparent 1px), linear-gradient(90deg, #17B8A6 1px, transparent 1px); background-size: 32px 32px;"></div>
       <div class="absolute inset-0 bg-gradient-to-b from-signal-900/10 via-transparent to-ink-950 pointer-events-none"></div>
@@ -42,7 +46,7 @@ export interface NetworkLogLine {
         </div>
       </div>
 
-      <svg #svg class="absolute inset-0 w-full h-full" viewBox="0 0 800 420" preserveAspectRatio="xMidYMid meet">
+      <svg #svg class="absolute inset-0 w-full h-full" viewBox="0 0 900 420" preserveAspectRatio="xMidYMid meet">
         <defs>
           <filter id="lnvNodeGlow" x="-50%" y="-50%" width="200%" height="200%">
             <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000" flood-opacity="0.5"/>
@@ -62,45 +66,47 @@ export interface NetworkLogLine {
           </linearGradient>
         </defs>
 
-        <path id="lnv-path-1" d="M 100 210 L 210 210" fill="none" stroke="url(#lnvLineDim)" stroke-width="2.5" class="lnv-flow-line"/>
+        <path id="lnv-path-1" d="M 100 210 L 170 210" fill="none" stroke="url(#lnvLineDim)" stroke-width="2.5" class="lnv-flow-line"/>
         <path id="lnv-path-2" d="M 270 210 L 330 210" fill="none" stroke="url(#lnvLineDim)" stroke-width="2.5" class="lnv-flow-line"/>
-        <path id="lnv-path-3" d="M 380 210 L 440 210" fill="none" stroke="url(#lnvLineDim)" stroke-width="2.5" class="lnv-flow-line"/>
-        <path id="lnv-path-4" d="M 500 210 L 560 210" fill="none" stroke="url(#lnvLineDim)" stroke-width="2.5" class="lnv-flow-line"/>
-        <path id="lnv-path-5" d="M 620 210 L 680 210" fill="none" stroke="url(#lnvLineDim)" stroke-width="2.5" class="lnv-flow-line"/>
+        <path id="lnv-path-3" d="M 420 210 L 480 210" fill="none" stroke="url(#lnvLineDim)" stroke-width="2.5" class="lnv-flow-line"/>
+        <path id="lnv-path-4" d="M 545 197 L 612 138" fill="none" stroke="url(#lnvLineDim)" stroke-width="2.5" class="lnv-flow-line"/>
+        <path id="lnv-path-5" d="M 560 210 L 612 210" fill="none" stroke="url(#lnvLineDim)" stroke-width="2.5" class="lnv-flow-line"/>
+        <path id="lnv-path-6" d="M 545 223 L 612 282" fill="none" stroke="url(#lnvLineDim)" stroke-width="2.5" class="lnv-flow-line"/>
+        <path id="lnv-path-7" d="M 664 210 L 760 210" fill="none" stroke="url(#lnvLineDim)" stroke-width="2.5" class="lnv-flow-line"/>
 
         <circle id="lnv-packet" r="7" fill="#3DD9C6" filter="url(#lnvPacketGlow)" opacity="0"/>
 
         <g id="lnv-node-backend" class="lnv-network-node" transform="translate(60,210)" filter="url(#lnvNodeGlow)">
           <rect x="-50" y="-28" width="100" height="56" rx="10" fill="#12161D" stroke="#262E3A" stroke-width="1.5" class="lnv-node-body"/>
-          <text text-anchor="middle" y="-4" fill="#fff" font-size="11" font-weight="600">{{ siteName || 'Your Backend' }}</text>
+          <text text-anchor="middle" y="-4" fill="#fff" font-size="11" font-weight="600">{{ siteLabel() || siteName || 'Your Backend' }}</text>
           <text text-anchor="middle" y="12" fill="#5B677A" font-size="9">connected site</text>
         </g>
-        <g id="lnv-node-gateway" class="lnv-network-node" transform="translate(240,210)" filter="url(#lnvNodeGlow)">
+        <g id="lnv-node-gateway" class="lnv-network-node" transform="translate(220,210)" filter="url(#lnvNodeGlow)">
           <rect x="-45" y="-24" width="90" height="48" rx="8" fill="#12161D" stroke="#262E3A" stroke-width="1.5" class="lnv-node-body"/>
           <text text-anchor="middle" y="-2" fill="#3DD9C6" font-size="10">ChainProof</text>
           <text text-anchor="middle" y="10" fill="#3DD9C6" font-size="10">Gateway</text>
         </g>
-        <g id="lnv-node-hash" class="lnv-network-node" transform="translate(410,210)" filter="url(#lnvNodeGlow)">
+        <g id="lnv-node-hash" class="lnv-network-node" transform="translate(380,210)" filter="url(#lnvNodeGlow)">
           <rect x="-40" y="-22" width="80" height="44" rx="8" fill="#12161D" stroke="#262E3A" stroke-width="1.5" class="lnv-node-body"/>
           <text text-anchor="middle" y="4" fill="#fff" font-size="10">SHA-256 Hash</text>
         </g>
-        <g id="lnv-node-orderer" class="lnv-peer-node lnv-network-node" transform="translate(560,210)" filter="url(#lnvNodeGlow)">
+        <g id="lnv-node-orderer" class="lnv-peer-node lnv-network-node" transform="translate(520,210)" filter="url(#lnvNodeGlow)">
           <polygon points="0,-26 24,13 -24,13" fill="#0B3A35" stroke="#262E3A" stroke-width="1.5" class="lnv-node-body"/>
           <text text-anchor="middle" y="30" fill="#5B677A" font-size="9">orderer0</text>
         </g>
-        <g id="lnv-node-peer" class="lnv-peer-node lnv-network-node" transform="translate(680,210)" filter="url(#lnvNodeGlow)">
-          <circle r="26" fill="#12161D" stroke="#262E3A" stroke-width="1.5" class="lnv-node-body"/>
-          <text text-anchor="middle" y="-2" fill="#3DD9C6" font-size="9">peer0</text>
-          <text text-anchor="middle" y="10" fill="#5B677A" font-size="7">CouchDB</text>
-        </g>
-        <g id="lnv-node-ledger" class="lnv-network-node" transform="translate(740,330)" filter="url(#lnvNodeGlow)">
-          <rect x="-38" y="-24" width="76" height="48" rx="6" fill="#0B3A35" stroke="#262E3A" stroke-width="1.5" class="lnv-node-body"/>
+        @for (p of peers; track p.id; let i = $index) {
+          <g [id]="'lnv-node-' + p.id" class="lnv-peer-node lnv-network-node" [attr.transform]="'translate(636,' + p.y + ')'" filter="url(#lnvNodeGlow)">
+            <circle r="24" fill="#12161D" stroke="#262E3A" stroke-width="1.5" class="lnv-node-body"/>
+            <text text-anchor="middle" y="4" fill="#3DD9C6" font-size="9">{{ p.label }}</text>
+          </g>
+        }
+        <g id="lnv-node-ledger" class="lnv-network-node" transform="translate(800,210)" filter="url(#lnvNodeGlow)">
+          <rect x="-38" y="-28" width="76" height="56" rx="6" fill="#0B3A35" stroke="#262E3A" stroke-width="1.5" class="lnv-node-body"/>
           <text text-anchor="middle" y="-4" fill="#fff" font-size="10" font-weight="600">Ledger</text>
           <text text-anchor="middle" y="12" fill="#3DD9C6" font-size="8">IMMUTABLE</text>
         </g>
-        <path d="M 680 236 L 740 306" fill="none" stroke="url(#lnvLineDim)" stroke-width="2" stroke-dasharray="3,3"/>
 
-        <g transform="translate(400,385)" opacity="0.85">
+        <g transform="translate(450,395)" opacity="0.85">
           <text text-anchor="middle" fill="#5B677A" font-size="9">{{ chaincode || 'chainproof-integrity' }} chaincode · Docker · Fabric CA · CouchDB</text>
         </g>
       </svg>
@@ -121,11 +127,19 @@ export class LiveNetworkVisualizerComponent implements AfterViewInit, OnDestroy 
   @Input() siteName = '';
   @Input() channel = '';
   @Input() chaincode = '';
+  @Input() set peerNodes(names: string[]) {
+    const list = (names && names.length ? names : ['peer0', 'peer1', 'peer2']).slice(0, 3);
+    this.peers = list.map((n, i) => ({ id: `peer${i}`, label: shortPeerLabel(n), y: PEER_Y[i] ?? PEER_Y[PEER_Y.length - 1] }));
+  }
+
+  peers: { id: string; label: string; y: number }[] = ['peer0', 'peer1', 'peer2']
+    .map((n, i) => ({ id: `peer${i}`, label: shortPeerLabel(n), y: PEER_Y[i] }));
 
   logs = signal<NetworkLogLine[]>([]);
   tampered = signal(false);
+  siteLabel = signal('');
   private ready = false;
-  private queue: { text: string; isTamper: boolean }[] = [];
+  private queue: { text: string; isTamper: boolean; siteName?: string }[] = [];
   private playing = false;
 
   ngAfterViewInit() {
@@ -139,30 +153,28 @@ export class LiveNetworkVisualizerComponent implements AfterViewInit, OnDestroy 
   }
 
   /** Call for every newly observed anchor (isTamper=false) or tamper incident (isTamper=true). */
-  emit(text: string, isTamper: boolean) {
+  emit(text: string, isTamper: boolean, siteName?: string) {
     this.logs.update(l => [{ text, tampered: isTamper }, ...l.slice(0, 6)]);
     if (isTamper) {
       this.tampered.set(true);
     }
-    this.queue.push({ text, isTamper });
+    this.queue.push({ text, isTamper, siteName });
     if (this.ready) this.drainQueue();
   }
 
-  /** Operator acknowledged / integrity restored — clears the red state. */
+  /** Operator acknowledged / integrity restored — clears the red alert state. */
   clearAlert() {
     this.tampered.set(false);
-    gsap.to('.lnv-flow-line', { attr: { stroke: 'url(#lnvLineDim)' }, duration: 0.4 });
-    gsap.to('#lnv-packet', { fill: '#3DD9C6', duration: 0.3 });
   }
 
   private primeLines() {
     const svg = this.svgRef.nativeElement;
-    for (let i = 1; i <= 5; i++) {
-      const el = svg.querySelector(`#lnv-path-${i}`) as SVGPathElement;
-      if (!el) continue;
+    ALL_PATH_IDS.forEach(id => {
+      const el = svg.querySelector(`#${id}`) as SVGPathElement;
+      if (!el) return;
       const len = el.getTotalLength();
       gsap.set(el, { strokeDasharray: len, strokeDashoffset: len });
-    }
+    });
   }
 
   private drainQueue() {
@@ -170,39 +182,66 @@ export class LiveNetworkVisualizerComponent implements AfterViewInit, OnDestroy 
     const next = this.queue.shift();
     if (!next) return;
     this.playing = true;
+    if (next.siteName) this.siteLabel.set(next.siteName);
     this.playFlow(next.isTamper, () => {
       this.playing = false;
       this.drainQueue();
     });
   }
 
+  /** Which peer this event's packet visits — cycles so all peers see traffic over time. */
+  private peerCursor = 0;
+  private pickPeerPathIds(): { fan: string; toLedger: boolean } {
+    const idx = this.peerCursor % Math.max(1, this.peers.length);
+    this.peerCursor++;
+    const fanPathByIndex = ['lnv-path-4', 'lnv-path-5', 'lnv-path-6'];
+    return { fan: fanPathByIndex[idx] ?? 'lnv-path-5', toLedger: idx === 1 || this.peers.length === 1 };
+  }
+
   private playFlow(isTamper: boolean, onDone: () => void) {
     const svg = this.svgRef.nativeElement;
     const color = isTamper ? '#F2545B' : '#3DD9C6';
-    const lineGrad = isTamper ? '#F2545B' : 'url(#lnvLineGrad)';
+    const lineColor = isTamper ? '#F2545B' : 'url(#lnvLineGrad)';
+    const { fan, toLedger } = this.pickPeerPathIds();
+    const mainSequence = ['lnv-path-1', 'lnv-path-2', 'lnv-path-3', fan];
+    const fullSequence = toLedger ? [...mainSequence, 'lnv-path-7'] : mainSequence;
+
+    // The previous event's lit path disappears the moment a new one starts —
+    // reset everything to idle before drawing the fresh (persisted) route.
+    this.resetAllPaths();
+
     const tl = gsap.timeline({ onComplete: onDone });
     gsap.set('#lnv-packet', { fill: color, opacity: 1 });
 
-    for (let i = 1; i <= 5; i++) {
-      const path = svg.querySelector(`#lnv-path-${i}`) as SVGPathElement;
-      if (!path) continue;
-      tl.to(path, { strokeDashoffset: 0, duration: 0.4, ease: 'power2.inOut', attr: { stroke: lineGrad } }, i === 1 ? 0 : '-=0.05');
+    fullSequence.forEach((id, i) => {
+      const path = svg.querySelector(`#${id}`) as SVGPathElement;
+      if (!path) return;
+      tl.to(path, { strokeDashoffset: 0, duration: 0.4, ease: 'power2.inOut', attr: { stroke: lineColor } }, i === 0 ? 0 : '-=0.05');
       tl.to('#lnv-packet', {
         duration: 0.4, ease: 'none',
         motionPath: { path, align: path, alignOrigin: [0.5, 0.5] },
       }, '<');
-      if (i === 4) {
-        tl.call(() => this.pulseNode('#lnv-node-orderer', isTamper));
+      if (id === fan) {
+        const peer = this.peers[(this.peerCursor - 1) % this.peers.length];
+        tl.call(() => this.pulseNode(`#lnv-node-${peer?.id}`, isTamper));
       }
-      if (i === 5) {
-        tl.call(() => this.pulseNode('#lnv-node-peer', isTamper));
-      }
-      if (!isTamper) {
-        tl.to(path, { attr: { stroke: 'url(#lnvLineDim)' }, duration: 0.3 }, '+=0.05');
-      }
+    });
+    if (toLedger) {
+      tl.call(() => this.pulseNode('#lnv-node-ledger', isTamper));
     }
-    tl.call(() => this.pulseNode('#lnv-node-ledger', isTamper));
     tl.to('#lnv-packet', { opacity: 0, duration: 0.2 });
+    // Lines stay lit (persisted) — no fade-back here by design.
+  }
+
+  private resetAllPaths() {
+    const svg = this.svgRef.nativeElement;
+    ALL_PATH_IDS.forEach(id => {
+      const el = svg.querySelector(`#${id}`) as SVGPathElement;
+      if (!el) return;
+      const len = el.getTotalLength();
+      gsap.to(el, { strokeDashoffset: len, attr: { stroke: 'url(#lnvLineDim)' }, duration: 0.2, overwrite: true });
+    });
+    gsap.to('.lnv-node-body', { stroke: '#262E3A', strokeWidth: 1.5, duration: 0.2, overwrite: 'auto' });
   }
 
   private pulseNode(nodeSel: string, isTamper: boolean) {
@@ -211,7 +250,7 @@ export class LiveNetworkVisualizerComponent implements AfterViewInit, OnDestroy 
     gsap.fromTo(node.querySelector('.lnv-node-body'), {
       stroke: isTamper ? '#F2545B' : '#17B8A6', strokeWidth: 2, filter: 'brightness(1.5)',
     }, {
-      stroke: isTamper ? '#F2545B' : '#262E3A',
+      stroke: isTamper ? '#F2545B' : '#17B8A6',
       strokeWidth: isTamper ? 2 : 1.5,
       filter: 'brightness(1)',
       duration: 0.9,
@@ -219,4 +258,9 @@ export class LiveNetworkVisualizerComponent implements AfterViewInit, OnDestroy 
     });
     gsap.fromTo(node, { scale: 1 }, { scale: 1.08, duration: 0.25, yoyo: true, repeat: 1, transformOrigin: 'center' });
   }
+}
+
+function shortPeerLabel(fullName: string): string {
+  const first = (fullName || '').split('.')[0];
+  return first || 'peer';
 }

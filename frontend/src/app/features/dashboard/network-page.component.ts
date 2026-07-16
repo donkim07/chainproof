@@ -94,7 +94,8 @@ const POLL_MS = 5000;
       <app-live-network-visualizer
         [siteName]="selectedSiteName"
         [channel]="networkStatus?.channel || ''"
-        [chaincode]="networkStatus?.chaincode || ''" />
+        [chaincode]="networkStatus?.chaincode || ''"
+        [peerNodes]="networkStatus?.peer_nodes || []" />
 
       <p class="mt-3 text-xs text-ink-500">
         Orderer: {{ (networkStatus?.orderer_nodes || []).join(', ') || '—' }} ·
@@ -130,6 +131,16 @@ export class NetworkPageComponent implements OnInit, OnDestroy {
   get selectedSiteName(): string {
     if (!this.selectedSiteId) return this.sites[0]?.name || 'Your Backend';
     return this.sites.find(s => s.id === this.selectedSiteId)?.name || 'Your Backend';
+  }
+
+  /** Resolves which connected site an anchor/incident actually came from — falls
+   *  back to the currently selected site when the row predates site tracking. */
+  private siteNameFor(siteId?: string): string {
+    if (siteId) {
+      const match = this.sites.find(s => s.id === siteId);
+      if (match) return match.name;
+    }
+    return this.selectedSiteName;
   }
 
   ngOnInit(): void {
@@ -185,7 +196,8 @@ export class NetworkPageComponent implements OnInit, OnDestroy {
       this.recordsSeeded = true;
       if (wasSeeded) {
         [...fresh].reverse().forEach(r => {
-          this.visualizer?.emit(`Anchored ${r.entity_type} · ${r.record_hash.slice(0, 10)}…`, false);
+          const site = this.siteNameFor(r.site_id);
+          this.visualizer?.emit(`${site}: anchored ${r.entity_type} · ${r.record_hash.slice(0, 10)}…`, false, site);
         });
       }
     });
@@ -198,7 +210,8 @@ export class NetworkPageComponent implements OnInit, OnDestroy {
       this.incidentsSeeded = true;
       if (wasSeeded) {
         [...fresh].reverse().forEach(i => {
-          this.visualizer?.emit(`⚠ Tamper detected: ${i.entity_type} · ${i.entity_id}`, true);
+          const site = this.siteNameFor(i.site_id);
+          this.visualizer?.emit(`⚠ ${site}: tamper detected — ${i.entity_type} · ${i.entity_id}`, true, site);
         });
       }
     });
