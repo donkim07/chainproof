@@ -3,10 +3,48 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    /* Dark theme (default) — deep ink neutrals + teal "verified/trust" accent */
+    --cp-ink-950: 10 13 18;
+    --cp-ink-900: 18 22 29;
+    --cp-ink-800: 27 33 43;
+    --cp-ink-700: 38 46 58;
+    --cp-ink-500: 91 103 122;
+    --cp-signal-900: 11 58 53;
+    --cp-signal-500: 23 184 166;
+    --cp-signal-400: 61 217 198;
+    --cp-alert-500: 242 84 91;
+    --cp-alert-400: 245 120 126;
+    --cp-warn-500: 232 164 69;
+    --cp-white: 255 255 255;
+    --cp-slate-300: 203 213 225;
+    --cp-slate-200: 226 232 240;
+    --cp-shadow-elev: 0.25;
+  }
+
+  :root.light {
+    /* Light theme — cool-neutral surfaces, deepened teal/red/amber for AA contrast on white */
+    --cp-ink-950: 247 249 251;
+    --cp-ink-900: 255 255 255;
+    --cp-ink-800: 238 241 245;
+    --cp-ink-700: 226 232 240;
+    --cp-ink-500: 100 116 139;
+    --cp-signal-900: 209 245 240;
+    --cp-signal-500: 13 148 136;
+    --cp-signal-400: 15 118 110;
+    --cp-alert-500: 225 29 42;
+    --cp-alert-400: 190 18 35;
+    --cp-warn-500: 161 98 7;
+    --cp-white: 15 23 42;
+    --cp-slate-300: 51 65 85;
+    --cp-slate-200: 30 41 59;
+    --cp-shadow-elev: 0.08;
+  }
+
   html { @apply scroll-smooth; }
   body {
-    @apply bg-ink-950 text-slate-100 font-sans antialiased;
-    background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(11, 58, 53, 0.08), transparent);
+    @apply bg-ink-950 text-slate-100 font-sans antialiased transition-colors duration-200;
+    background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgb(var(--cp-signal-900) / 0.08), transparent);
   }
   h1, h2, h3 { @apply font-display; }
   @media (prefers-reduced-motion: reduce) {
@@ -29,7 +67,8 @@
     @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-ink-800 hover:text-white;
   }
   .card {
-    @apply rounded-xl border border-ink-700 bg-ink-900 p-6 shadow-xl shadow-black/30;
+    @apply rounded-xl border border-ink-700 bg-ink-900 p-6 shadow-xl;
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / var(--cp-shadow-elev)), 0 8px 10px -6px rgb(0 0 0 / var(--cp-shadow-elev));
   }
   .input-field {
     @apply w-full rounded-lg border border-ink-700 bg-ink-800/50 px-4 py-2.5 text-sm text-white placeholder-ink-500 transition-colors focus:border-signal-500 focus:outline-none focus:ring-2 focus:ring-signal-500/20;

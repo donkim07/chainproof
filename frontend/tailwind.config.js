@@ -5,23 +5,28 @@ module.exports = {
     extend: {
       colors: {
         ink: {
-          950: '#0A0D12',
-          900: '#12161D',
-          800: '#1B212B',
-          700: '#262E3A',
-          500: '#5B677A',
+          950: 'rgb(var(--cp-ink-950) / <alpha-value>)',
+          900: 'rgb(var(--cp-ink-900) / <alpha-value>)',
+          800: 'rgb(var(--cp-ink-800) / <alpha-value>)',
+          700: 'rgb(var(--cp-ink-700) / <alpha-value>)',
+          500: 'rgb(var(--cp-ink-500) / <alpha-value>)',
         },
         signal: {
-          900: '#0B3A35',
-          500: '#17B8A6',
-          400: '#3DD9C6',
+          900: 'rgb(var(--cp-signal-900) / <alpha-value>)',
+          500: 'rgb(var(--cp-signal-500) / <alpha-value>)',
+          400: 'rgb(var(--cp-signal-400) / <alpha-value>)',
         },
         alert: {
-          500: '#F2545B',
-          400: '#F5787E',
+          500: 'rgb(var(--cp-alert-500) / <alpha-value>)',
+          400: 'rgb(var(--cp-alert-400) / <alpha-value>)',
         },
         warn: {
-          500: '#E8A445',
+          500: 'rgb(var(--cp-warn-500) / <alpha-value>)',
+        },
+        white: 'rgb(var(--cp-white) / <alpha-value>)',
+        slate: {
+          300: 'rgb(var(--cp-slate-300) / <alpha-value>)',
+          200: 'rgb(var(--cp-slate-200) / <alpha-value>)',
         },
         brand: {
           50: '#eef7ff',

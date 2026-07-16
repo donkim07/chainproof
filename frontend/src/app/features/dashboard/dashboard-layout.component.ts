@@ -5,6 +5,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { PermissionService } from '../../core/services/permission.service';
 import { ApiService } from '../../core/services/api.service';
 import { ToastService } from '../../core/services/toast.service';
+import { ThemeService } from '../../core/services/theme.service';
 import { IconComponent } from '../../shared/components/icon/icon.component';
 import { DashboardSearchComponent } from '../../shared/components/dashboard-search/dashboard-search.component';
 
@@ -107,6 +108,10 @@ interface NavGroup {
             }
             <span class="badge-success hidden md:inline-flex">{{ auth.user()?.org_name || 'Platform' }}</span>
             <a routerLink="/docs" class="btn-ghost hidden text-xs sm:inline-flex">Docs</a>
+            <button type="button" class="rounded-lg p-2 text-ink-500 transition-colors hover:bg-ink-800 hover:text-white"
+              (click)="theme.toggle()" [attr.aria-label]="theme.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'" title="Toggle theme">
+              <app-icon [name]="theme.theme() === 'dark' ? 'sun' : 'moon'" size="md" />
+            </button>
           </div>
         </header>
 
@@ -121,7 +126,7 @@ interface NavGroup {
     .nav-section-toggle { @apply flex w-full items-center gap-2 rounded-lg px-3 py-2 transition-colors hover:bg-ink-800/50; }
     .nav-link { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-ink-500 transition-all duration-200 hover:bg-ink-800 hover:text-white border-l-2 border-transparent; }
     .nav-active { @apply bg-signal-500/15 text-signal-400 border-signal-500 shadow-inner; }
-    .sidebar-panel { box-shadow: 4px 0 24px rgba(0,0,0,0.25); }
+    .sidebar-panel { box-shadow: 4px 0 24px rgb(0 0 0 / var(--cp-shadow-elev)); }
   `],
 })
 export class DashboardLayoutComponent implements OnInit {
@@ -215,6 +220,7 @@ export class DashboardLayoutComponent implements OnInit {
 
   constructor(
     public auth: AuthService,
+    public theme: ThemeService,
     private perms: PermissionService,
     private router: Router,
     private api: ApiService,

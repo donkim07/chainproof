@@ -10,6 +10,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <script>
+    (function () {
+      var stored = localStorage.getItem('cp-theme');
+      var isLight = stored ? stored === 'light' : window.matchMedia('(prefers-color-scheme: light)').matches;
+      if (isLight) document.documentElement.classList.add('light');
+    })();
+  </script>
 </head>
 <body>
   <app-root></app-root>

@@ -1,12 +1,13 @@
 import {
   Component, Input, OnChanges, OnDestroy, AfterViewInit,
-  ElementRef, ViewChild, SimpleChanges, ChangeDetectionStrategy, ChangeDetectorRef,
+  ElementRef, ViewChild, SimpleChanges, ChangeDetectionStrategy, ChangeDetectorRef, effect,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   Chart, DoughnutController, ArcElement, Tooltip, Legend, PieController,
   BarController, BarElement, CategoryScale, LinearScale, ChartEvent, ActiveElement,
 } from 'chart.js';
+import { ThemeService } from '../../../core/services/theme.service';
 
 Chart.register(DoughnutController, PieController, BarController, ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
@@ -53,7 +54,18 @@ export class InteractiveChartComponent implements AfterViewInit, OnDestroy, OnCh
   highlighted = -1;
   hidden = new Set<number>();
 
-  constructor(private cdr: ChangeDetectorRef) {}
+  constructor(private cdr: ChangeDetectorRef, private theme: ThemeService) {
+    effect(() => {
+      this.theme.theme();
+      if (this.viewReady) this.build();
+    });
+  }
+
+  private get chrome() {
+    return this.theme.theme() === 'dark'
+      ? { surface: '#12161D', tooltipBg: '#1B212B', title: '#fff', body: '#5B677A', line: '#262E3A' }
+      : { surface: '#FFFFFF', tooltipBg: '#FFFFFF', title: '#0F172A', body: '#64748B', line: '#E2E8F0' };
+  }
 
   ngOnChanges(changes: SimpleChanges) {
     if (changes['items'] && this.viewReady) {
@@ -103,6 +115,7 @@ export class InteractiveChartComponent implements AfterViewInit, OnDestroy, OnCh
 
     const self = this;
     const isArc = this.type === 'doughnut' || this.type === 'pie';
+    const chrome = this.chrome;
 
     this.chart = new Chart(ctx, {
       type: this.type,
@@ -111,7 +124,7 @@ export class InteractiveChartComponent implements AfterViewInit, OnDestroy, OnCh
         datasets: [{
           data: this.items.map(i => i.value),
           backgroundColor: this.items.map(i => i.color),
-          borderColor: '#12161D',
+          borderColor: chrome.surface,
           borderWidth: 2,
           hoverOffset: isArc ? 12 : 0,
           borderRadius: this.type === 'bar' ? 4 : 0,
@@ -126,10 +139,10 @@ export class InteractiveChartComponent implements AfterViewInit, OnDestroy, OnCh
           legend: { display: false },
           tooltip: {
             enabled: true,
-            backgroundColor: '#1B212B',
-            titleColor: '#fff',
-            bodyColor: '#5B677A',
-            borderColor: '#262E3A',
+            backgroundColor: chrome.tooltipBg,
+            titleColor: chrome.title,
+            bodyColor: chrome.body,
+            borderColor: chrome.line,
             borderWidth: 1,
             padding: 10,
             callbacks: {
@@ -139,8 +152,8 @@ export class InteractiveChartComponent implements AfterViewInit, OnDestroy, OnCh
         },
         ...(this.type === 'bar' ? {
           scales: {
-            x: { grid: { color: '#262E3A' }, ticks: { color: '#5B677A' } },
-            y: { grid: { color: '#262E3A' }, ticks: { color: '#5B677A' }, beginAtZero: true },
+            x: { grid: { color: chrome.line }, ticks: { color: chrome.body } },
+            y: { grid: { color: chrome.line }, ticks: { color: chrome.body }, beginAtZero: true },
           },
         } : {}),
         onHover: (_e: ChartEvent, els: ActiveElement[]) => {

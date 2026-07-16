@@ -2,12 +2,14 @@ import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../core/services/auth.service';
+import { ThemeService } from '../../../core/services/theme.service';
 import { ButtonComponent } from '../button/button.component';
+import { IconComponent } from '../icon/icon.component';
 
 @Component({
   selector: 'app-public-nav',
   standalone: true,
-  imports: [CommonModule, RouterLink, ButtonComponent],
+  imports: [CommonModule, RouterLink, ButtonComponent, IconComponent],
   template: `
     <nav class="fixed top-0 z-50 w-full border-b border-ink-800/60 bg-ink-950/90 backdrop-blur-xl">
       <div class="mx-auto flex h-14 sm:h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
@@ -25,6 +27,10 @@ import { ButtonComponent } from '../button/button.component';
 
         <!-- Desktop auth -->
         <div class="hidden md:flex items-center gap-3 shrink-0">
+          <button type="button" class="rounded-lg p-2 text-ink-500 transition-colors hover:bg-ink-800 hover:text-white"
+            (click)="theme.toggle()" [attr.aria-label]="theme.theme() === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'" title="Toggle theme">
+            <app-icon [name]="theme.theme() === 'dark' ? 'sun' : 'moon'" size="sm" />
+          </button>
           @if (auth.isLoggedIn()) {
             <span class="hidden lg:inline text-xs text-ink-500 truncate max-w-[140px]">{{ auth.user()?.email }}</span>
             <a [routerLink]="auth.postLoginPath()"><app-button variant="secondary">Dashboard</app-button></a>
@@ -52,6 +58,11 @@ import { ButtonComponent } from '../button/button.component';
           <a routerLink="/pricing" class="block rounded-lg px-3 py-3 text-base font-medium text-slate-300 hover:bg-ink-800/60 hover:text-white transition-colors" (click)="closeMobile()">Pricing</a>
           <a routerLink="/docs" class="block rounded-lg px-3 py-3 text-base font-medium text-slate-300 hover:bg-ink-800/60 hover:text-white transition-colors" (click)="closeMobile()">Docs</a>
           <div class="my-3 border-t border-ink-800"></div>
+          <button type="button" class="flex w-full items-center gap-2 rounded-lg px-3 py-3 text-base font-medium text-slate-300 transition-colors hover:bg-ink-800/60 hover:text-white"
+            (click)="theme.toggle()">
+            <app-icon [name]="theme.theme() === 'dark' ? 'sun' : 'moon'" size="sm" />
+            {{ theme.theme() === 'dark' ? 'Light mode' : 'Dark mode' }}
+          </button>
           @if (auth.isLoggedIn()) {
             <p class="px-3 py-2 text-xs text-ink-500 truncate">{{ auth.user()?.email }}</p>
             <a [routerLink]="auth.postLoginPath()" (click)="closeMobile()" class="block mt-2">
@@ -73,7 +84,7 @@ import { ButtonComponent } from '../button/button.component';
 export class PublicNavComponent {
   mobileOpen = false;
 
-  constructor(public auth: AuthService) {}
+  constructor(public auth: AuthService, public theme: ThemeService) {}
 
   toggleMobile() {
     this.mobileOpen = !this.mobileOpen;
