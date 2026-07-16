@@ -192,12 +192,14 @@ func (s *IntegrityService) Verify(ctx context.Context, orgSlug string, req model
 	}
 
 	var expectedHash, recordHash, txID string
+	var siteID *uuid.UUID
+	var recordID uuid.UUID
 	err = pool.QueryRow(ctx, `
-		SELECT payload_hash, record_hash, COALESCE(blockchain_tx_id, '')
+		SELECT id, payload_hash, record_hash, COALESCE(blockchain_tx_id, ''), site_id
 		FROM integrity_records
 		WHERE entity_type = $1 AND entity_id = $2
 		ORDER BY created_at DESC LIMIT 1`,
-		req.EntityType, req.EntityID).Scan(&expectedHash, &recordHash, &txID)
+		req.EntityType, req.EntityID).Scan(&recordID, &expectedHash, &recordHash, &txID, &siteID)
 	if err != nil {
 		return &models.VerifyResponse{
 			Intact: false, HasAnchor: false, ActualHash: actualHash,
@@ -217,7 +219,7 @@ func (s *IntegrityService) Verify(ctx context.Context, orgSlug string, req model
 		resp.Message = "Record integrity verified — no tampering detected"
 	} else {
 		resp.Message = "TAMPERING DETECTED — payload hash mismatch"
-		_ = s.recordTamperIncident(ctx, pool, req.EntityType, req.EntityID, expectedHash, &actualHash, txID, "high")
+		_ = s.recordTamperIncident(ctx, pool, siteID, &recordID, req.EntityType, req.EntityID, expectedHash, &actualHash, txID, "high")
 	}
 
 	return resp, nil
@@ -304,7 +306,7 @@ func (s *IntegrityService) RunMonitor(ctx context.Context, orgSlug string) (int,
 }
 
 // recordTamperIncident inserts one open incident per entity/hash mismatch (no duplicates).
-func (s *IntegrityService) recordTamperIncident(ctx context.Context, pool *pgxpool.Pool, entityType, entityID, expectedHash string, actualHash *string, txID, severity string) error {
+func (s *IntegrityService) recordTamperIncident(ctx context.Context, pool *pgxpool.Pool, siteID, recordID *uuid.UUID, entityType, entityID, expectedHash string, actualHash *string, txID, severity string) error {
 	var exists bool
 	err := pool.QueryRow(ctx, `
 		SELECT EXISTS(
@@ -319,9 +321,9 @@ func (s *IntegrityService) recordTamperIncident(ctx context.Context, pool *pgxpo
 	}
 	_, err = pool.Exec(ctx, `
 		INSERT INTO tamper_incidents
-		(entity_type, entity_id, severity, expected_hash, actual_hash, blockchain_tx_id)
-		VALUES ($1, $2, $3, $4, $5, NULLIF($6,''))`,
-		entityType, entityID, severity, expectedHash, actualHash, txID)
+		(site_id, integrity_record_id, entity_type, entity_id, severity, expected_hash, actual_hash, blockchain_tx_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, NULLIF($8,''))`,
+		siteID, recordID, entityType, entityID, severity, expectedHash, actualHash, txID)
 	return err
 }
 
