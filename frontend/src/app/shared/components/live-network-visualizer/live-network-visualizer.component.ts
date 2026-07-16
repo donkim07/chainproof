@@ -191,8 +191,9 @@ export class LiveNetworkVisualizerComponent implements AfterViewInit, OnDestroy 
 
   private playFlow(isTamper: boolean, onDone: () => void) {
     const svg = this.svgRef.nativeElement;
+    // Same solid-color treatment for both — only the color itself differs.
     const color = isTamper ? '#F2545B' : '#3DD9C6';
-    const lineColor = isTamper ? '#F2545B' : 'url(#lnvLineGrad)';
+    const lineColor = color;
     // Real Fabric semantics: the orderer broadcasts the block to every peer at
     // once, and every peer commits it to the ledger — so every event lights
     // up the full path through ALL peers and always reaches the ledger.
@@ -240,11 +241,12 @@ export class LiveNetworkVisualizerComponent implements AfterViewInit, OnDestroy 
   private pulseNode(nodeSel: string, isTamper: boolean) {
     const node = this.svgRef.nativeElement.querySelector(nodeSel);
     if (!node) return;
+    const color = isTamper ? '#F2545B' : '#17B8A6';
     gsap.fromTo(node.querySelector('.lnv-node-body'), {
-      stroke: isTamper ? '#F2545B' : '#17B8A6', strokeWidth: 2, filter: 'brightness(1.5)',
+      stroke: color, strokeWidth: 2, filter: 'brightness(1.5)',
     }, {
-      stroke: isTamper ? '#F2545B' : '#17B8A6',
-      strokeWidth: isTamper ? 2 : 1.5,
+      stroke: color,
+      strokeWidth: 2,
       filter: 'brightness(1)',
       duration: 0.9,
       ease: 'power2.out',
