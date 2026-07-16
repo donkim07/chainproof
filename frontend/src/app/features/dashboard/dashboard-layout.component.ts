@@ -145,6 +145,7 @@ export class DashboardLayoutComponent implements OnInit {
       orgOnly: true,
       items: [
         { path: '/dashboard/sites', label: 'All Sites', icon: 'globe', needsOrg: true, badge: 'Core', perm: 'sites:read' },
+        { path: '/dashboard/network', label: 'Live Network', icon: 'radar', needsOrg: true, badge: 'New', perm: 'integrity:verify' },
         { path: '/dashboard/incidents', label: 'Incidents', icon: 'alert', needsOrg: true, perm: 'tampering:read' },
         { path: '/dashboard/records', label: 'Anchored Records', icon: 'database', needsOrg: true, perm: 'integrity:verify' },
       ],

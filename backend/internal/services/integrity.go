@@ -16,12 +16,30 @@ import (
 )
 
 type IntegrityService struct {
-	tenant *tenant.Resolver
-	fabric *blockchain.Client
+	tenant          *tenant.Resolver
+	fabric          *blockchain.Client
+	fabricChannel   string
+	fabricChaincode string
 }
 
-func NewIntegrityService(t *tenant.Resolver, fabric *blockchain.Client) *IntegrityService {
-	return &IntegrityService{tenant: t, fabric: fabric}
+func NewIntegrityService(t *tenant.Resolver, fabric *blockchain.Client, fabricChannel, fabricChaincode string) *IntegrityService {
+	return &IntegrityService{tenant: t, fabric: fabric, fabricChannel: fabricChannel, fabricChaincode: fabricChaincode}
+}
+
+// NetworkStatus reports the real Fabric network reachable behind the gateway
+// adapter: one orderer (orderer0), one peer (peer0, CouchDB-backed) — the
+// actual deployed solo-node topology, not a simulated one.
+func (s *IntegrityService) NetworkStatus(ctx context.Context) models.NetworkStatus {
+	status := models.NetworkStatus{
+		DevMock:      s.fabric.DevMockEnabled(),
+		Channel:      s.fabricChannel,
+		Chaincode:    s.fabricChaincode,
+		OrdererNodes: []string{"orderer0.chainproof.local"},
+		PeerNodes:    []string{"peer0.chainproof.local"},
+		CheckedAt:    time.Now(),
+	}
+	status.GatewayReachable = s.fabric.Health(ctx) == nil
+	return status
 }
 
 func (s *IntegrityService) Anchor(ctx context.Context, orgSlug, actorID string, req models.AnchorRequest) (*models.IntegrityRecord, error) {

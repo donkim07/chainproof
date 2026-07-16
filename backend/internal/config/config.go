@@ -22,6 +22,8 @@ type Config struct {
 	FabricGatewayURL  string
 	FabricGatewayKey  string
 	FabricDevMock     bool
+	FabricChannel     string
+	FabricChaincode   string
 	SeedAdminEmail    string
 	SeedAdminPassword string
 	CORSOrigins       []string
@@ -80,6 +82,8 @@ func Load() (*Config, error) {
 		FabricGatewayURL:  getEnv("FABRIC_GATEWAY_URL", "http://localhost:8090"),
 		FabricGatewayKey:  getEnv("FABRIC_GATEWAY_API_KEY", "chainproof-dev-key"),
 		FabricDevMock:     getEnv("FABRIC_DEV_MOCK", "true") == "true",
+		FabricChannel:     getEnv("FABRIC_CHANNEL", "chainproof-channel"),
+		FabricChaincode:   getEnv("FABRIC_CHAINCODE", "chainproof-integrity"),
 		SeedAdminEmail:    getEnv("SEED_ADMIN_EMAIL", "admin@chainproof.io"),
 		SeedAdminPassword: getEnv("SEED_ADMIN_PASSWORD", "ChainProof2026!"),
 		CORSOrigins:       origins,

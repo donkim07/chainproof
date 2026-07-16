@@ -164,6 +164,19 @@ type VerifyResponse struct {
 	Message      string  `json:"message"`
 }
 
+// NetworkStatus reflects the real Hyperledger Fabric network backing anchors:
+// one orderer, one peer (CouchDB state DB) — the actual deployed topology,
+// not a marketing simulation.
+type NetworkStatus struct {
+	GatewayReachable bool      `json:"gateway_reachable"`
+	DevMock          bool      `json:"dev_mock"`
+	Channel          string    `json:"channel"`
+	Chaincode        string    `json:"chaincode"`
+	OrdererNodes     []string  `json:"orderer_nodes"`
+	PeerNodes        []string  `json:"peer_nodes"`
+	CheckedAt        time.Time `json:"checked_at"`
+}
+
 type DashboardStats struct {
 	TotalSites         int `json:"total_sites"`
 	ProtectedEndpoints int `json:"protected_endpoints"`

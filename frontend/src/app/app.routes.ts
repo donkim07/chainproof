@@ -12,6 +12,7 @@ import { ApiKeysPageComponent } from './features/dashboard/api-keys-page.compone
 import { TeamPageComponent } from './features/dashboard/team-page.component';
 import { SettingsPageComponent } from './features/dashboard/settings-page.component';
 import { RecordsPageComponent } from './features/dashboard/records-page.component';
+import { NetworkPageComponent } from './features/dashboard/network-page.component';
 import { AnalyticsPageComponent } from './features/dashboard/analytics-page.component';
 import { PlatformOverviewPageComponent } from './features/dashboard/platform-overview-page.component';
 import { PlatformOrganizationsPageComponent } from './features/dashboard/platform-organizations-page.component';
@@ -51,6 +52,7 @@ export const routes: Routes = [
       { path: 'sites', component: SitesPageComponent, canActivate: [orgGuard] },
       { path: 'incidents', component: IncidentsPageComponent, canActivate: [orgGuard] },
       { path: 'records', component: RecordsPageComponent, canActivate: [orgGuard] },
+      { path: 'network', component: NetworkPageComponent, canActivate: [orgGuard] },
       { path: 'api-keys', component: ApiKeysPageComponent, canActivate: [orgGuard] },
       { path: 'billing', component: BillingPageComponent, canActivate: [orgGuard] },
       { path: 'billing/checkout', component: BillingCheckoutPageComponent, canActivate: [orgGuard] },

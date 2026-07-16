@@ -55,7 +55,7 @@ func main() {
 	defer tenantResolver.Close()
 
 	fabricClient := blockchain.NewClient(cfg.FabricGatewayURL, cfg.FabricGatewayKey, cfg.FabricDevMock)
-	integritySvc := services.NewIntegrityService(tenantResolver, fabricClient)
+	integritySvc := services.NewIntegrityService(tenantResolver, fabricClient, cfg.FabricChannel, cfg.FabricChaincode)
 	siteSvc := services.NewSiteService(tenantResolver)
 	apiKeySvc := services.NewAPIKeyService(tenantResolver)
 	teamSvc := services.NewTeamService(tenantResolver)
@@ -123,6 +123,7 @@ func main() {
 			protected.POST("/auth/resend-verification", authHandler.ResendVerification)
 			protected.GET("/dashboard/search", dashboardHandler.Search)
 			protected.GET("/dashboard/stats", middleware.RequireTenantPermission(permSvc, "integrity:verify"), integrityHandler.DashboardStats)
+			protected.GET("/network/status", middleware.RequireTenantPermission(permSvc, "integrity:verify"), integrityHandler.NetworkStatus)
 			protected.GET("/dashboard/analytics", middleware.RequireTenantPermission(permSvc, "integrity:verify"), siteHandler.Analytics)
 
 			protected.GET("/integrity/records", middleware.RequireTenantPermission(permSvc, "integrity:verify"), integrityHandler.ListRecords)

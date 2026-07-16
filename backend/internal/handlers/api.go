@@ -110,6 +110,14 @@ func (h *IntegrityHandler) ListRecords(c *gin.Context) {
 	c.JSON(http.StatusOK, records)
 }
 
+func (h *IntegrityHandler) NetworkStatus(c *gin.Context) {
+	if _, ok := requireOrgSlug(c, h.platform); !ok {
+		return
+	}
+	status := h.integrity.NetworkStatus(c.Request.Context())
+	c.JSON(http.StatusOK, status)
+}
+
 func (h *IntegrityHandler) DashboardStats(c *gin.Context) {
 	slug, ok := requireOrgSlug(c, h.platform)
 	if !ok {
