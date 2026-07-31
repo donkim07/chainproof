@@ -69,7 +69,7 @@ import { ButtonComponent } from '../../shared/components/button/button.component
               <div class="rounded-lg bg-slate-950/80 p-3 border border-rose-500/30">
                 <div class="text-slate-500">GET /api/users/42 — scheduled check</div>
                 <div class="mt-2 text-rose-400">&#9888; hash mismatch detected</div>
-                <div class="mt-1 text-amber-300">attribution: user admin@acme.io · 14:32 UTC</div>
+                <div class="mt-1 text-amber-300">attribution: user admin&#64;acme.io · 14:32 UTC</div>
               </div>
               <div class="flex gap-2 flex-wrap">
                 <span class="badge-info">OpenAPI discovery</span>

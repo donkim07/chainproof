@@ -57,8 +57,13 @@ import { AuthService } from '../../core/services/auth.service';
           <button class="lg:hidden text-slate-400" (click)="sidebarOpen = !sidebarOpen">
             <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
           </button>
-          <div class="flex-1"></div>
-          <span class="badge-info">{{ auth.user()?.org_name || 'Dashboard' }}</span>
+          <div class="flex-1">
+            <div class="hidden sm:block text-sm text-slate-500">ChainProof</div>
+          </div>
+          @if (auth.user()?.role) {
+            <span class="badge-info capitalize">{{ auth.user()?.role?.replace('_', ' ') }}</span>
+          }
+          <span class="badge-success hidden md:inline-flex">{{ auth.user()?.org_name || 'Platform' }}</span>
         </header>
         <main class="flex-1 p-4 sm:p-6 animate-fade-in">
           <router-outlet />
@@ -66,12 +71,20 @@ import { AuthService } from '../../core/services/auth.service';
       </div>
     </div>
   `,
+  styles: [`
+    :host ::ng-deep .nav-link {
+      @apply flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 transition-all hover:bg-slate-800 hover:text-white;
+    }
+    :host ::ng-deep .nav-active {
+      @apply bg-brand-600/15 text-brand-400 shadow-inner;
+    }
+  `],
 })
 export class DashboardLayoutComponent implements OnInit {
   sidebarOpen = false;
   navItems = [
     { path: '/dashboard', label: 'Overview', icon: '&#9632;', needsOrg: true },
-    { path: '/dashboard/sites', label: 'Sites', icon: '&#127760;', needsOrg: true },
+    { path: '/dashboard/sites', label: 'Sites', icon: '&#127760;', needsOrg: true, badge: 'Core' },
     { path: '/dashboard/incidents', label: 'Tampering', icon: '&#9888;', needsOrg: true },
     { path: '/dashboard/records', label: 'Records', icon: '&#128274;', needsOrg: true },
     { path: '/dashboard/api-keys', label: 'API Keys', icon: '&#128273;', needsOrg: true },
@@ -79,6 +92,11 @@ export class DashboardLayoutComponent implements OnInit {
     { path: '/dashboard/settings', label: 'Settings', icon: '&#9881;', needsOrg: true },
     { path: '/dashboard/platform', label: 'Platform', icon: '&#9733;', needsOrg: false, superAdminOnly: true },
   ];
+
+  get initials() {
+    const name = this.auth.user()?.full_name || this.auth.user()?.email || '?';
+    return name.split(/[\s@]+/).slice(0, 2).map(p => p[0]?.toUpperCase() || '').join('');
+  }
 
   get visibleNav() {
     return this.navItems.filter(item => {

@@ -36,7 +36,7 @@ interface Discovered {
 @Component({
   selector: 'app-sites-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, ButtonComponent, PageHeaderComponent, StatCardComponent, EmptyStateComponent],
+  imports: [CommonModule, FormsModule, ButtonComponent, PageHeaderComponent, StatCardComponent, EmptyStateComponent],
   template: `
     <app-page-header
       title="Sites & Endpoints"
@@ -88,7 +88,7 @@ interface Discovered {
           @for (site of filtered; track site.id) {
             <button type="button"
               class="w-full text-left px-4 py-4 transition-colors hover:bg-slate-800/40"
-              [class.bg-brand-600/10]="selectedSite?.id === site.id"
+              [ngClass]="{'bg-brand-600/10': selectedSite?.id === site.id}"
               (click)="selectSite(site)">
               <div class="flex items-start justify-between gap-2">
                 <div>
